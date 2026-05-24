@@ -5,6 +5,7 @@ from crypto_utils import save_to_keyring, get_from_keyring, delete_from_keyring,
 from extension_installer import is_installed, is_installed_for_browser, install_for_browser, uninstall_for_browser, get_installed_extension_details
 import json
 import os
+import browser_profiles
 
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
@@ -538,76 +539,146 @@ class PasswordManager(ctk.CTk):
         else:
             messagebox.showerror("Error", "Failed to save password")
 
+    def get_all_connected_profiles(self):
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, "r") as f:
+                    config = json.load(f)
+                    return config.get("browser_profiles", {})
+            except Exception:
+                pass
+        return {}
+
     def show_browser_integrations_page(self):
         self.clear_frame()
         self.main_frame.grid_columnconfigure(0, weight=1)
         
         ctk.CTkButton(self.main_frame, text="← Back", width=80, command=self.show_main_dashboard).grid(row=0, column=0, sticky="w", padx=20, pady=20)
         
-        browsers = ["Firefox", "Chrome", "Edge"]
-        connected_count = sum(1 for b in browsers if is_installed_for_browser(b))
+        header_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        header_frame.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 20))
+        header_frame.grid_columnconfigure(0, weight=1)
+        header_frame.grid_columnconfigure(1, weight=0)
         
-        title_text = f"Browser Integrations ({connected_count} Connected)" if connected_count > 0 else "Browser Integrations"
-        title = ctk.CTkLabel(self.main_frame, text=title_text, font=ctk.CTkFont(family="Helvetica", size=32, weight="bold"))
-        title.grid(row=1, column=0, pady=(0, 20))
+        connected_profiles = self.get_all_connected_profiles()
+        count = len(connected_profiles)
         
+        title_text = f"Browser Integrations ({count} Connected)" if count > 0 else "Browser Integrations"
+        title = ctk.CTkLabel(header_frame, text=title_text, font=ctk.CTkFont(family="Helvetica", size=24, weight="bold"))
+        title.grid(row=0, column=0, sticky="w")
+        
+        add_btn = ctk.CTkButton(header_frame, text="Add +", width=80, fg_color="#10A37F", hover_color="#0e906f", font=ctk.CTkFont(weight="bold"), command=self.show_add_integration_modal)
+        add_btn.grid(row=0, column=1, sticky="e")
+        
+        if count == 0:
+            empty_lbl = ctk.CTkLabel(self.main_frame, text="No browsers connected yet.\nClick 'Add +' to get started.", font=ctk.CTkFont(size=14), text_color="gray")
+            empty_lbl.grid(row=2, column=0, pady=50)
+            return
+
         row_idx = 2
-        for b in browsers:
+        for browser, profile_name in connected_profiles.items():
             frame = ctk.CTkFrame(self.main_frame, width=500, corner_radius=12)
             frame.grid(row=row_idx, column=0, pady=10, padx=20)
             frame.grid_columnconfigure(0, weight=1)
             frame.grid_columnconfigure(1, weight=0)
             
-            is_conn = is_installed_for_browser(b)
+            lbl = ctk.CTkLabel(frame, text=f"{browser} Browser", font=ctk.CTkFont(family="Helvetica", size=18, weight="bold"))
+            lbl.grid(row=0, column=0, sticky="w", padx=20, pady=(20, 5))
             
-            lbl = ctk.CTkLabel(frame, text=f"{b} Browser", font=ctk.CTkFont(family="Helvetica", size=18, weight="bold"))
-            lbl.grid(row=0, column=0, sticky="w", padx=20, pady=(20, 5) if is_conn else 20)
+            sub_frame = ctk.CTkFrame(frame, fg_color="transparent")
+            sub_frame.grid(row=1, column=0, sticky="w", padx=20, pady=(0, 20))
             
-            if is_conn:
-                profile_name = self.get_browser_profile(b)
-                if profile_name:
-                    sub_text = f"Profile: {profile_name}"
-                else:
-                    ext_id = get_installed_extension_details(b)
-                    sub_text = f"ID: {ext_id}" if ext_id else "Connected"
-                    
-                sub_lbl = ctk.CTkLabel(frame, text=sub_text, font=ctk.CTkFont(size=12), text_color="#10A37F")
-                sub_lbl.grid(row=1, column=0, sticky="w", padx=20, pady=(0, 20))
+            sub_lbl = ctk.CTkLabel(sub_frame, text=f"Profile: {profile_name}", font=ctk.CTkFont(size=12), text_color="#10A37F")
+            sub_lbl.grid(row=0, column=0, sticky="w")
             
-            def make_connect_cmd(browser=b):
+            def make_edit_cmd(b=browser):
                 def cmd():
-                    if browser == "Firefox":
-                        success, msg = install_for_browser(browser)
-                    else:
-                        ext_id = ctk.CTkInputDialog(text=f"Enter {browser} Extension ID (from extensions page):", title="Connect").get_input()
-                        if not ext_id: return
-                        success, msg = install_for_browser(browser, ext_id)
-                        
-                    if success:
-                        profile_name = ctk.CTkInputDialog(text=f"Enter a Profile Name for this {browser} connection\n(e.g. Work, Personal):", title="Profile Name").get_input()
-                        if profile_name:
-                            self.save_browser_profile(browser, profile_name)
-                        messagebox.showinfo("Success", msg)
-                    else:
-                        messagebox.showerror("Error", msg)
+                    new_name = ctk.CTkInputDialog(text=f"Enter a Profile Name for {b}:", title="Edit Profile Name").get_input()
+                    if new_name is not None:
+                        if new_name.strip() == "":
+                            self.delete_browser_profile(b)
+                        else:
+                            self.save_browser_profile(b, new_name.strip())
+                        self.show_browser_integrations_page()
+                return cmd
+                
+            edit_btn = ctk.CTkButton(sub_frame, text="✎ Edit Name", width=70, height=20, font=ctk.CTkFont(size=10), fg_color="transparent", text_color="gray", border_width=1, command=make_edit_cmd())
+            edit_btn.grid(row=0, column=1, padx=(10, 0))
+            
+            def make_disconnect_cmd(b=browser):
+                def cmd():
+                    uninstall_for_browser(b)
+                    self.delete_browser_profile(b)
                     self.show_browser_integrations_page()
                 return cmd
                 
-            def make_disconnect_cmd(browser=b):
-                def cmd():
-                    success, msg = uninstall_for_browser(browser)
-                    self.delete_browser_profile(browser)
-                    self.show_browser_integrations_page()
-                return cmd
-                
-            if is_conn:
-                btn = ctk.CTkButton(frame, text="Disconnect", command=make_disconnect_cmd(), fg_color="transparent", text_color="#E74C3C", border_width=1, border_color="#E74C3C", hover_color="#FDEDEC", width=120, corner_radius=8)
-                btn.grid(row=0, column=1, rowspan=2 if is_conn else 1, sticky="e", padx=20, pady=20)
-            else:
-                btn = ctk.CTkButton(frame, text="Connect", command=make_connect_cmd(), fg_color="#007AFF", hover_color="#0056B3", width=120, corner_radius=8)
-                btn.grid(row=0, column=1, sticky="e", padx=20, pady=20)
+            btn = ctk.CTkButton(frame, text="Disconnect", command=make_disconnect_cmd(), fg_color="transparent", text_color="#E74C3C", border_width=1, border_color="#E74C3C", hover_color="#FDEDEC", width=120, corner_radius=8)
+            btn.grid(row=0, column=1, rowspan=2, sticky="e", padx=20, pady=20)
                 
             row_idx += 1
+
+    def show_add_integration_modal(self):
+        top = ctk.CTkToplevel(self)
+        top.title("Add Browser Integration")
+        top.geometry("450x380")
+        top.attributes('-topmost', True)
+        top.grab_set()
+        
+        lbl = ctk.CTkLabel(top, text="Connect a Browser", font=ctk.CTkFont(size=20, weight="bold"))
+        lbl.pack(pady=(20, 10))
+        
+        browser_lbl = ctk.CTkLabel(top, text="1. Select Browser:", font=ctk.CTkFont(size=12))
+        browser_lbl.pack(anchor="w", padx=40, pady=(10, 0))
+        
+        supported_browsers = ["Select...", "Firefox", "Chrome", "Brave", "Chromium", "Edge"]
+        browser_var = ctk.StringVar(value="Select...")
+        browser_dropdown = ctk.CTkOptionMenu(top, values=supported_browsers, variable=browser_var, width=320)
+        browser_dropdown.pack(pady=(5, 10))
+        
+        profile_lbl = ctk.CTkLabel(top, text="2. Select Profile:", font=ctk.CTkFont(size=12))
+        profile_lbl.pack(anchor="w", padx=40, pady=(10, 0))
+        
+        profile_var = ctk.StringVar(value="")
+        profile_dropdown = ctk.CTkOptionMenu(top, values=["Select a browser first"], variable=profile_var, width=320, state="disabled")
+        profile_dropdown.pack(pady=(5, 10))
+        
+        def on_browser_select(*args):
+            b = browser_var.get()
+            if b != "Select...":
+                profiles = browser_profiles.get_profiles_for_browser(b)
+                profile_dropdown.configure(state="normal", values=profiles)
+                if profiles:
+                    profile_var.set(profiles[0])
+                else:
+                    profile_var.set("Default")
+        browser_var.trace_add("write", on_browser_select)
+        
+        def do_connect():
+            browser = browser_var.get()
+            profile = profile_var.get()
+            
+            if browser == "Select...":
+                messagebox.showerror("Error", "Please select a browser.", parent=top)
+                return
+                
+            if browser == "Firefox":
+                success, msg = install_for_browser(browser)
+            else:
+                ext_id = ctk.CTkInputDialog(text=f"Enter {browser} Extension ID (from extensions page):", title="Connect").get_input()
+                if not ext_id:
+                    return
+                success, msg = install_for_browser(browser, ext_id)
+                
+            if success:
+                self.save_browser_profile(browser, profile)
+                messagebox.showinfo("Success", msg, parent=top)
+                top.destroy()
+                self.show_browser_integrations_page()
+            else:
+                messagebox.showerror("Error", msg, parent=top)
+                
+        btn = ctk.CTkButton(top, text="Connect Browser", width=200, height=40, fg_color="#10A37F", hover_color="#0e906f", font=ctk.CTkFont(weight="bold", size=14), command=do_connect)
+        btn.pack(pady=30)
 
     def export_backup(self):
         password = ctk.CTkInputDialog(text="Enter a strong Backup Password:", title="Export Backup").get_input()

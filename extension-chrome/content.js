@@ -109,9 +109,13 @@ if (navigator.credentials && navigator.credentials.create) {
             parsed.getClientExtensionResults = function() { return {}; };
             
             if (parsed.response) {
-                parsed.response.getAuthenticatorData = function() { return parsed.response.attestationObject; };
+                if (parsed.response.authenticatorData) {
+                    parsed.response.getAuthenticatorData = function() { return parsed.response.authenticatorData; };
+                } else {
+                    parsed.response.getAuthenticatorData = function() { return parsed.response.attestationObject; };
+                }
                 parsed.response.getPublicKey = function() { return null; };
-                parsed.response.getPublicKeyAlgorithm = function() { return 0; };
+                parsed.response.getPublicKeyAlgorithm = function() { return -7; };
                 parsed.response.getTransports = function() { return ["internal"]; };
             }
             return parsed;

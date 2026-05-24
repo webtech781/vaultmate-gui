@@ -33,6 +33,10 @@ def get_browser_dirs(browser_name):
             paths.append(os.path.expanduser("~/.var/app/org.chromium.Chromium/config/chromium/NativeMessagingHosts"))
         elif browser_name == "Edge":
             paths.append(os.path.expanduser("~/.config/microsoft-edge/NativeMessagingHosts"))
+            paths.append(os.path.expanduser("~/.var/app/com.microsoft.Edge/config/microsoft-edge/NativeMessagingHosts"))
+        elif browser_name == "Brave":
+            paths.append(os.path.expanduser("~/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts"))
+            paths.append(os.path.expanduser("~/.var/app/com.brave.Browser/config/BraveSoftware/Brave-Browser/NativeMessagingHosts"))
         elif browser_name == "Firefox":
             paths.append(os.path.expanduser("~/.mozilla/native-messaging-hosts"))
             # Flatpak Firefox

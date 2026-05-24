@@ -20,14 +20,14 @@ VaultMate is a secure, offline-first, locally-hosted password and passkey manage
 - **Framework:** Built using Python and `customtkinter` for a sleek, modern, dark/light mode adaptable interface.
 - **Dashboard:** Unified vault view categorizing credentials into "Web Passwords", "App Passwords", and "Passkeys".
 - **Management:** Users can add, view, copy, and delete credentials.
-- **Browser Integration Hub:** A dedicated UI page to one-click install the Native Messaging Host for Chromium and Firefox.
+- **Browser Integration Hub:** A dedicated UI page to natively connect supported browsers (Chrome, Edge, Brave, Chromium, Firefox). It features a dynamic profile parser that scans the OS (and Flatpak sandboxes) to fetch existing browser profiles (e.g., "Default", "Work Profile") for easy configuration.
 - **Backup & Restore:** Secure export and import functionality to backup the local vault.
 
 ### 3.3 Browser Extension (Manifest V3)
 - **Cross-Browser:** Supports both Chromium-based browsers (Chrome, Edge, Brave) and Firefox.
 - **Autofill:** Seamlessly detects login forms and autofills usernames and passwords by securely querying the desktop host.
 - **Auto-Save:** Aggressively captures newly entered credentials upon form submission and sends them to the desktop host for secure storage.
-- **Passkey (WebAuthn/FIDO2) Interception:** Completely intercepts native `navigator.credentials.create` and `get` API calls in the browser's MAIN world, delegating the cryptographic signing back to the desktop application instead of the browser or OS-level TPM.
+- **Passkey (WebAuthn/FIDO2) Interception:** Completely intercepts native `navigator.credentials.create` and `get` API calls. It strictly adheres to WebAuthn specifications (including `authenticatorData` buffers, explicit algorithm identifiers, and `userHandle` extraction for discoverable credentials), delegating cryptographic signing to the desktop application instead of the OS.
 
 ### 3.4 Native Messaging Host (Python)
 - **Communication:** Facilitates real-time, bi-directional `stdio` communication between the sandboxed browser extension and the local SQLite database.

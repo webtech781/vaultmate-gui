@@ -214,7 +214,8 @@ def main():
                     "rawId": {"__type": "ArrayBuffer", "data": b64u(credential_id)},
                     "response": {
                         "clientDataJSON": {"__type": "ArrayBuffer", "data": b64u(client_data)},
-                        "attestationObject": {"__type": "ArrayBuffer", "data": b64u(att_obj)}
+                        "attestationObject": {"__type": "ArrayBuffer", "data": b64u(att_obj)},
+                        "authenticatorData": {"__type": "ArrayBuffer", "data": b64u(auth_data)}
                     },
                     "type": "public-key"
                 }
