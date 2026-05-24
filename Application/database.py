@@ -65,6 +65,11 @@ class Database:
             cursor.execute("ALTER TABLE passkeys ADD COLUMN user_name TEXT")
         except Exception:
             pass # Column already exists
+            
+        try:
+            cursor.execute("ALTER TABLE passkeys ADD COLUMN user_handle TEXT")
+        except Exception:
+            pass # Column already exists
         
         self.conn.commit()
 
@@ -245,16 +250,16 @@ class Database:
             print(f"Error deleting user: {e}")
             return False
 
-    def add_passkey(self, user_id, rp_id, user_name, credential_id, public_key, private_key, key):
+    def add_passkey(self, user_id, rp_id, user_name, credential_id, public_key, private_key, key, user_handle=None):
         try:
             encrypted_pub = encrypt_data(public_key.hex(), key)
             encrypted_priv = encrypt_data(private_key.hex(), key)
             
             cursor = self.conn.cursor()
             cursor.execute('''
-                INSERT INTO passkeys (user_id, rp_id, user_name, credential_id, public_key, private_key, sign_count)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (user_id, rp_id, user_name, credential_id, encrypted_pub, encrypted_priv, 0))
+                INSERT INTO passkeys (user_id, rp_id, user_name, credential_id, public_key, private_key, sign_count, user_handle)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (user_id, rp_id, user_name, credential_id, encrypted_pub, encrypted_priv, 0, user_handle))
             self.conn.commit()
             return True
         except Exception as e:
@@ -278,7 +283,8 @@ class Database:
                     'credential_id': row['credential_id'],
                     'public_key': decrypted_pub,
                     'private_key': decrypted_priv,
-                    'sign_count': row['sign_count']
+                    'sign_count': row['sign_count'],
+                    'user_handle': row['user_handle']
                 })
             except Exception as e:
                 print(f"Failed to decrypt passkey: {e}")

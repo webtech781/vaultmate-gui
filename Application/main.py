@@ -2,7 +2,7 @@ import customtkinter as ctk
 from tkinter import messagebox, filedialog
 from database import Database
 from crypto_utils import save_to_keyring, get_from_keyring, delete_from_keyring, derive_key
-from extension_installer import is_installed, is_installed_for_browser, install_for_browser, uninstall_for_browser
+from extension_installer import is_installed, is_installed_for_browser, install_for_browser, uninstall_for_browser, get_installed_extension_details
 import json
 import os
 
@@ -51,11 +51,64 @@ class PasswordManager(ctk.CTk):
         return None
 
     def save_last_username(self, username):
+        config = {}
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, "r") as f:
+                    config = json.load(f)
+            except Exception:
+                pass
+                
+        config["last_username"] = username
         try:
             with open(CONFIG_FILE, "w") as f:
-                json.dump({"last_username": username}, f)
+                json.dump(config, f)
         except Exception:
             pass
+
+    def get_browser_profile(self, browser_name):
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, "r") as f:
+                    config = json.load(f)
+                    profiles = config.get("browser_profiles", {})
+                    return profiles.get(browser_name)
+            except Exception:
+                pass
+        return None
+
+    def save_browser_profile(self, browser_name, profile_name):
+        config = {}
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, "r") as f:
+                    config = json.load(f)
+            except Exception:
+                pass
+        
+        if "browser_profiles" not in config:
+            config["browser_profiles"] = {}
+            
+        config["browser_profiles"][browser_name] = profile_name
+        
+        try:
+            with open(CONFIG_FILE, "w") as f:
+                json.dump(config, f)
+        except Exception:
+            pass
+
+    def delete_browser_profile(self, browser_name):
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, "r") as f:
+                    config = json.load(f)
+                
+                if "browser_profiles" in config and browser_name in config["browser_profiles"]:
+                    del config["browser_profiles"][browser_name]
+                    with open(CONFIG_FILE, "w") as f:
+                        json.dump(config, f)
+            except Exception:
+                pass
 
     def attempt_auto_login(self):
         username = self.get_last_username()
@@ -491,10 +544,12 @@ class PasswordManager(ctk.CTk):
         
         ctk.CTkButton(self.main_frame, text="← Back", width=80, command=self.show_main_dashboard).grid(row=0, column=0, sticky="w", padx=20, pady=20)
         
-        title = ctk.CTkLabel(self.main_frame, text="Browser Integrations", font=ctk.CTkFont(family="Helvetica", size=32, weight="bold"))
-        title.grid(row=1, column=0, pady=(0, 20))
-        
         browsers = ["Firefox", "Chrome", "Edge"]
+        connected_count = sum(1 for b in browsers if is_installed_for_browser(b))
+        
+        title_text = f"Browser Integrations ({connected_count} Connected)" if connected_count > 0 else "Browser Integrations"
+        title = ctk.CTkLabel(self.main_frame, text=title_text, font=ctk.CTkFont(family="Helvetica", size=32, weight="bold"))
+        title.grid(row=1, column=0, pady=(0, 20))
         
         row_idx = 2
         for b in browsers:
@@ -503,10 +558,21 @@ class PasswordManager(ctk.CTk):
             frame.grid_columnconfigure(0, weight=1)
             frame.grid_columnconfigure(1, weight=0)
             
-            lbl = ctk.CTkLabel(frame, text=f"{b} Browser", font=ctk.CTkFont(family="Helvetica", size=18, weight="bold"))
-            lbl.grid(row=0, column=0, sticky="w", padx=20, pady=20)
-            
             is_conn = is_installed_for_browser(b)
+            
+            lbl = ctk.CTkLabel(frame, text=f"{b} Browser", font=ctk.CTkFont(family="Helvetica", size=18, weight="bold"))
+            lbl.grid(row=0, column=0, sticky="w", padx=20, pady=(20, 5) if is_conn else 20)
+            
+            if is_conn:
+                profile_name = self.get_browser_profile(b)
+                if profile_name:
+                    sub_text = f"Profile: {profile_name}"
+                else:
+                    ext_id = get_installed_extension_details(b)
+                    sub_text = f"ID: {ext_id}" if ext_id else "Connected"
+                    
+                sub_lbl = ctk.CTkLabel(frame, text=sub_text, font=ctk.CTkFont(size=12), text_color="#10A37F")
+                sub_lbl.grid(row=1, column=0, sticky="w", padx=20, pady=(0, 20))
             
             def make_connect_cmd(browser=b):
                 def cmd():
@@ -516,7 +582,11 @@ class PasswordManager(ctk.CTk):
                         ext_id = ctk.CTkInputDialog(text=f"Enter {browser} Extension ID (from extensions page):", title="Connect").get_input()
                         if not ext_id: return
                         success, msg = install_for_browser(browser, ext_id)
+                        
                     if success:
+                        profile_name = ctk.CTkInputDialog(text=f"Enter a Profile Name for this {browser} connection\n(e.g. Work, Personal):", title="Profile Name").get_input()
+                        if profile_name:
+                            self.save_browser_profile(browser, profile_name)
                         messagebox.showinfo("Success", msg)
                     else:
                         messagebox.showerror("Error", msg)
@@ -526,12 +596,13 @@ class PasswordManager(ctk.CTk):
             def make_disconnect_cmd(browser=b):
                 def cmd():
                     success, msg = uninstall_for_browser(browser)
+                    self.delete_browser_profile(browser)
                     self.show_browser_integrations_page()
                 return cmd
                 
             if is_conn:
                 btn = ctk.CTkButton(frame, text="Disconnect", command=make_disconnect_cmd(), fg_color="transparent", text_color="#E74C3C", border_width=1, border_color="#E74C3C", hover_color="#FDEDEC", width=120, corner_radius=8)
-                btn.grid(row=0, column=1, sticky="e", padx=20, pady=20)
+                btn.grid(row=0, column=1, rowspan=2 if is_conn else 1, sticky="e", padx=20, pady=20)
             else:
                 btn = ctk.CTkButton(frame, text="Connect", command=make_connect_cmd(), fg_color="#007AFF", hover_color="#0056B3", width=120, corner_radius=8)
                 btn.grid(row=0, column=1, sticky="e", padx=20, pady=20)

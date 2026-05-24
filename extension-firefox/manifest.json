@@ -1,10 +1,12 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "VaultMate Passkey Combo",
   "version": "1.0",
   "description": "Companion extension for VaultMate GUI to intercept Passkey requests.",
   "permissions": [
-    "nativeMessaging",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
     "<all_urls>"
   ],
   "browser_specific_settings": {
@@ -26,8 +28,5 @@
       "run_at": "document_start",
       "all_frames": true
     }
-  ],
-  "web_accessible_resources": [
-    "page_script.js"
   ]
 }

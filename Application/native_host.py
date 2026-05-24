@@ -180,7 +180,7 @@ def main():
                 )
                 
                 # 3. Store passkey in database
-                db.add_passkey(user['id'], rp_id, user_name, credential_id.hex(), pub_bytes, priv_bytes, user['key'])
+                db.add_passkey(user['id'], rp_id, user_name, credential_id.hex(), pub_bytes, priv_bytes, user['key'], user_id_b64)
                 
                 # 3. Construct ClientDataJSON
                 client_data = json.dumps({
@@ -288,6 +288,9 @@ def main():
                     },
                     "type": "public-key"
                 }
+                
+                if pk_data.get('user_handle'):
+                    cred_response["response"]["userHandle"] = {"__type": "ArrayBuffer", "data": pk_data['user_handle']}
                 
                 send_message({"credential": cred_response})
             else:

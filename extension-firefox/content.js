@@ -29,7 +29,6 @@ if (typeof exportFunction !== 'undefined' && typeof cloneInto !== 'undefined' &&
     function serializeBuffer(val) {
         if (!val) return null;
         if (val.byteLength !== undefined) {
-            // Important: Handle TypedArrays correctly to avoid byteOffset bugs
             let bytes;
             if (val.buffer) {
                 bytes = new Uint8Array(val.buffer, val.byteOffset, val.byteLength);
@@ -158,7 +157,6 @@ if (typeof exportFunction !== 'undefined' && typeof cloneInto !== 'undefined' &&
     exportFunction(interceptCreate, window.wrappedJSObject.navigator.credentials, {defineAs: "create"});
     exportFunction(interceptGet, window.wrappedJSObject.navigator.credentials, {defineAs: "get"});
 }
-
 
 // --- 2. Autofill Logic ---
 function attemptAutofill() {
