@@ -387,45 +387,66 @@ class PasswordManager(ctk.CTk):
 
     def create_password_card(self, parent, data, is_web=False):
         card = ctk.CTkFrame(parent, corner_radius=12, fg_color=("white", "gray17"))
-        card.grid_columnconfigure(0, weight=1) # Let the text area take up space
-        card.grid_columnconfigure(1, weight=0) # Lock the buttons area
-        
+        card.grid_columnconfigure(0, weight=1)
+        card.grid_columnconfigure(1, weight=0)
+
         title = data['website_name'] if is_web else data['app_name']
         subtitle = data['web_url'] if is_web else ""
         username = data['username']
         password = data['password']
         pid = data['id']
-        
+
+        def copy_text(text, label="Text"):
+            self.clipboard_clear()
+            self.clipboard_append(text)
+            self.after(0, lambda: self._show_copy_toast(f"{label} copied!"))
+
+        # --- Left: Info Block ---
         info_frame = ctk.CTkFrame(card, fg_color="transparent")
-        info_frame.grid(row=0, column=0, sticky="w", padx=20, pady=15)
-        
-        # Add wraplength so long titles don't push buttons off the screen
-        ctk.CTkLabel(info_frame, text=title, font=ctk.CTkFont(family="Helvetica", size=18, weight="bold"), wraplength=350, justify="left").grid(row=0, column=0, sticky="w")
+        info_frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=15)
+
+        ctk.CTkLabel(info_frame, text=title, font=ctk.CTkFont(family="Helvetica", size=16, weight="bold"), wraplength=300, justify="left").grid(row=0, column=0, columnspan=3, sticky="w")
+
+        # URL row (web only)
         if subtitle:
-            ctk.CTkLabel(info_frame, text=subtitle, font=ctk.CTkFont(size=12), text_color="gray", wraplength=350, justify="left").grid(row=1, column=0, sticky="w")
-        ctk.CTkLabel(info_frame, text=f"{username}").grid(row=2, column=0, sticky="w", pady=(5,0))
-        
-        pass_frame = ctk.CTkFrame(card, fg_color="transparent")
-        pass_frame.grid(row=0, column=1, sticky="e", padx=20, pady=15)
-        
-        pass_entry = ctk.CTkEntry(pass_frame, width=140, show="*", border_width=1, corner_radius=6)
+            ctk.CTkLabel(info_frame, text="🌐", font=ctk.CTkFont(size=11)).grid(row=1, column=0, sticky="w", pady=(6, 0))
+            ctk.CTkLabel(info_frame, text=subtitle, font=ctk.CTkFont(size=11), text_color="gray", wraplength=280, justify="left").grid(row=1, column=1, sticky="w", padx=(4, 8), pady=(6, 0))
+            ctk.CTkButton(info_frame, text="Copy URL", width=72, height=22, font=ctk.CTkFont(size=11), fg_color="#5856D6", hover_color="#3D3BBF", corner_radius=6,
+                          command=lambda: copy_text(subtitle, "URL")).grid(row=1, column=2, sticky="w", pady=(6, 0))
+
+        # Username row
+        ctk.CTkLabel(info_frame, text="👤", font=ctk.CTkFont(size=11)).grid(row=2, column=0, sticky="w", pady=(6, 0))
+        ctk.CTkLabel(info_frame, text=username, font=ctk.CTkFont(size=13)).grid(row=2, column=1, sticky="w", padx=(4, 8), pady=(6, 0))
+        ctk.CTkButton(info_frame, text="Copy User", width=72, height=22, font=ctk.CTkFont(size=11), fg_color="#34C759", hover_color="#28A745", corner_radius=6,
+                      command=lambda: copy_text(username, "Username")).grid(row=2, column=2, sticky="w", pady=(6, 0))
+
+        # Password row
+        ctk.CTkLabel(info_frame, text="🔑", font=ctk.CTkFont(size=11)).grid(row=3, column=0, sticky="w", pady=(6, 0))
+        pass_label = ctk.CTkLabel(info_frame, text="••••••••••", font=ctk.CTkFont(size=13))
+        pass_label.grid(row=3, column=1, sticky="w", padx=(4, 8), pady=(6, 0))
+        ctk.CTkButton(info_frame, text="Copy Pass", width=72, height=22, font=ctk.CTkFont(size=11), fg_color="#007AFF", hover_color="#0056B3", corner_radius=6,
+                      command=lambda: copy_text(password, "Password")).grid(row=3, column=2, sticky="w", pady=(6, 0))
+
+        # --- Right: View / Delete buttons ---
+        btn_frame = ctk.CTkFrame(card, fg_color="transparent")
+        btn_frame.grid(row=0, column=1, sticky="ne", padx=16, pady=15)
+
+        # Password entry (hidden, toggled by View)
+        pass_entry = ctk.CTkEntry(btn_frame, width=130, show="*", border_width=1, corner_radius=6)
         pass_entry.insert(0, password)
         pass_entry.configure(state="readonly")
-        pass_entry.grid(row=0, column=0, padx=(0, 10))
-        
+        pass_entry.grid(row=0, column=0, padx=(0, 8), pady=(0, 8))
+
         def toggle_view():
             if pass_entry.cget("show") == "*":
                 pass_entry.configure(show="")
+                pass_label.configure(text=password)
                 view_btn.configure(text="Hide")
             else:
                 pass_entry.configure(show="*")
+                pass_label.configure(text="••••••••••")
                 view_btn.configure(text="View")
-                
-        def copy_pass():
-            self.clipboard_clear()
-            self.clipboard_append(password)
-            messagebox.showinfo("Copied", "Password copied to clipboard")
-            
+
         def delete_pass():
             if messagebox.askyesno("Confirm", "Are you sure you want to delete this password?"):
                 if is_web:
@@ -433,17 +454,30 @@ class PasswordManager(ctk.CTk):
                 else:
                     self.db.delete_app_password(pid, self.current_user['id'])
                 self.load_passwords_view()
-        
-        view_btn = ctk.CTkButton(pass_frame, text="View", width=60, fg_color="transparent", text_color=("gray10", "gray90"), border_width=1, corner_radius=6, command=toggle_view)
-        view_btn.grid(row=0, column=1, padx=(0, 10))
-        
-        copy_btn = ctk.CTkButton(pass_frame, text="Copy", width=60, fg_color="#007AFF", hover_color="#0056B3", corner_radius=6, command=copy_pass)
-        copy_btn.grid(row=0, column=2, padx=(0, 10))
-        
-        del_btn = ctk.CTkButton(pass_frame, text="Delete", width=60, fg_color="transparent", text_color="#E74C3C", hover_color="#FDEDEC", border_width=1, border_color="#E74C3C", corner_radius=6, command=delete_pass)
-        del_btn.grid(row=0, column=3)
-        
+
+        view_btn = ctk.CTkButton(btn_frame, text="View", width=70, fg_color="transparent", text_color=("gray10", "gray90"), border_width=1, corner_radius=6, command=toggle_view)
+        view_btn.grid(row=1, column=0, pady=(0, 6))
+
+        del_btn = ctk.CTkButton(btn_frame, text="Delete", width=70, fg_color="transparent", text_color="#E74C3C", hover_color="#FDEDEC", border_width=1, border_color="#E74C3C", corner_radius=6, command=delete_pass)
+        del_btn.grid(row=2, column=0)
+
         return card
+
+    def _show_copy_toast(self, message):
+        """Show a brief non-blocking toast notification for copy actions."""
+        toast = ctk.CTkToplevel(self)
+        toast.overrideredirect(True)
+        toast.attributes('-topmost', True)
+        toast.configure(fg_color="#1C1C1E")
+        lbl = ctk.CTkLabel(toast, text=f"  ✓  {message}  ", font=ctk.CTkFont(size=13), text_color="#30D158", fg_color="#1C1C1E", corner_radius=10)
+        lbl.pack(padx=8, pady=8)
+        # Position bottom-right of main window
+        self.update_idletasks()
+        x = self.winfo_x() + self.winfo_width() - 220
+        y = self.winfo_y() + self.winfo_height() - 70
+        toast.geometry(f"+{x}+{y}")
+        toast.after(1800, toast.destroy)
+
 
     def show_add_app_password_page(self):
         self.clear_frame()

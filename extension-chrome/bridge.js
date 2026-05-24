@@ -1,11 +1,7 @@
 // bridge.js
 // Runs in the ISOLATED world and bridges messages between the MAIN world (content.js) and the background script.
 
-// 1. Inject content.js into the MAIN world
-const script = document.createElement('script');
-script.src = chrome.runtime.getURL('content.js');
-(document.head || document.documentElement).appendChild(script);
-script.onload = () => script.remove();
+// 1. (Content.js is now injected natively by Manifest V3 in the MAIN world to prevent race conditions)
 
 // 2. Listen for messages from the injected MAIN world script
 window.addEventListener("message", (event) => {
@@ -22,31 +18,51 @@ window.addEventListener("message", (event) => {
             options: event.data.options,
             url: window.location.href
         }, (response) => {
+            // Check for messaging errors (e.g. background script crashed or native host failed)
+            if (chrome.runtime.lastError) {
+                console.error("VaultMate bridge error:", chrome.runtime.lastError.message);
+                window.postMessage({
+                    type: "VAULTMATE_PASSKEY_RESPONSE",
+                    requestId: requestId,
+                    response: { error: chrome.runtime.lastError.message }
+                }, "*");
+                return;
+            }
             // Forward the response back to the MAIN world
             window.postMessage({
                 type: "VAULTMATE_PASSKEY_RESPONSE",
                 requestId: requestId,
-                response: response
+                response: response || { error: "No response from VaultMate host" }
             }, "*");
         });
     }
 });
 
 // --- 2. Autofill Logic (Runs in ISOLATED world with DOM access) ---
+
+// Fires native input/change events so React/Vue/Angular sites detect value changes
+function setNativeValue(el, value) {
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    nativeInputValueSetter.call(el, value);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
 function attemptAutofill() {
     const passwordInputs = document.querySelectorAll('input[type="password"]');
     if (passwordInputs.length > 0) {
         chrome.runtime.sendMessage({ action: "autofill_request", url: window.location.href }, (response) => {
-            if (response && response.status === "success" && response.credentials.length > 0) {
+            if (chrome.runtime.lastError) return;
+            if (response && response.status === "success" && response.credentials && response.credentials.length > 0) {
                 const cred = response.credentials[0];
                 
                 passwordInputs.forEach(passInput => {
-                    passInput.value = cred.password;
+                    setNativeValue(passInput, cred.password);
                     const form = passInput.closest('form');
                     if (form) {
                         const userInputs = form.querySelectorAll('input[type="text"], input[type="email"]');
                         if (userInputs.length > 0) {
-                            userInputs[0].value = cred.username;
+                            setNativeValue(userInputs[0], cred.username);
                         }
                     }
                 });

@@ -1,9 +1,14 @@
 // content.js - Runs in the MAIN world to intercept WebAuthn passkeys natively
+// Uses Object.defineProperty on the CredentialsContainer prototype for reliable
+// override in Brave/Chrome where direct assignment is silently ignored.
 
 (function() {
-if (navigator.credentials && navigator.credentials.create) {
-    const originalCreate = navigator.credentials.create;
-    const originalGet = navigator.credentials.get;
+    if (!navigator.credentials) return;
+
+    // Get the prototype so we override at the right level
+    const credProto = Object.getPrototypeOf(navigator.credentials);
+    const originalCreate = credProto.create ? credProto.create.bind(navigator.credentials) : navigator.credentials.create.bind(navigator.credentials);
+    const originalGet = credProto.get ? credProto.get.bind(navigator.credentials) : navigator.credentials.get.bind(navigator.credentials);
 
     // Helpers to convert ArrayBuffer to Base64url and back
     function bufferToBase64url(buffer) {
@@ -49,6 +54,9 @@ if (navigator.credentials && navigator.credentials.create) {
             if (pk.user) res.publicKey.user = { id: serializeBuffer(pk.user.id), name: pk.user.name, displayName: pk.user.displayName };
             if (pk.challenge) res.publicKey.challenge = serializeBuffer(pk.challenge);
             if (pk.rpId) res.publicKey.rpId = pk.rpId;
+            if (pk.allowCredentials) res.publicKey.allowCredentials = pk.allowCredentials.map(c => ({ type: c.type, id: serializeBuffer(c.id) }));
+            if (pk.userVerification) res.publicKey.userVerification = pk.userVerification;
+            if (pk.timeout) res.publicKey.timeout = pk.timeout;
         }
         return res;
     }
@@ -80,7 +88,7 @@ if (navigator.credentials && navigator.credentials.create) {
                 if (event.data && event.data.type === "VAULTMATE_PASSKEY_RESPONSE" && event.data.requestId === requestId) {
                     window.removeEventListener("message", listener);
                     if (!event.data.response || event.data.response.error) {
-                        reject(event.data.response ? event.data.response.error : "Bridge disconnected");
+                        reject(new Error(event.data.response ? event.data.response.error : "VaultMate bridge disconnected"));
                     } else {
                         resolve(event.data.response);
                     }
@@ -97,11 +105,11 @@ if (navigator.credentials && navigator.credentials.create) {
         });
     }
 
-    navigator.credentials.create = async function(options) {
+    const vaultmateCreate = async function(options) {
         if (!options || !options.publicKey) {
-            return originalCreate.call(navigator.credentials, options);
+            return originalCreate(options);
         }
-
+        console.log("[VaultMate] Intercepting credentials.create for:", options.publicKey.rp && options.publicKey.rp.id);
         try {
             const response = await sendToBridge("passkey_create", options);
             const parsed = deserializeResponse(response.credential);
@@ -120,16 +128,17 @@ if (navigator.credentials && navigator.credentials.create) {
             }
             return parsed;
         } catch (err) {
-            console.log("VaultMate Passkey error/fallback:", err);
-            return originalCreate.call(navigator.credentials, options);
+            console.error("[VaultMate] Passkey create error:", err.message);
+            return originalCreate(options);
         }
     };
 
-    navigator.credentials.get = async function(options) {
+    const vaultmateGet = async function(options) {
         if (!options || !options.publicKey) {
-            return originalGet.call(navigator.credentials, options);
+            // Pass through conditional UI / non-passkey calls
+            return originalGet(options);
         }
-
+        console.log("[VaultMate] Intercepting credentials.get for:", options.publicKey.rpId);
         try {
             const response = await sendToBridge("passkey_get", options);
             const parsed = deserializeResponse(response.credential);
@@ -138,12 +147,32 @@ if (navigator.credentials && navigator.credentials.create) {
             
             if (parsed.response) {
                 parsed.response.getAuthenticatorData = function() { return parsed.response.authenticatorData; };
+                parsed.response.getUserHandle = function() { return parsed.response.userHandle || null; };
             }
             return parsed;
         } catch (err) {
-            console.log("VaultMate Passkey error/fallback:", err);
-            return originalGet.call(navigator.credentials, options);
+            console.error("[VaultMate] Passkey get error:", err.message);
+            return originalGet(options);
         }
     };
-}
+
+    // Override at prototype level — direct assignment is silently ignored in Brave/Chrome
+    try {
+        Object.defineProperty(credProto, 'create', {
+            value: vaultmateCreate,
+            writable: true,
+            configurable: true
+        });
+        Object.defineProperty(credProto, 'get', {
+            value: vaultmateGet,
+            writable: true,
+            configurable: true
+        });
+        console.log("[VaultMate] WebAuthn override installed on CredentialsContainer prototype");
+    } catch (e) {
+        // Fallback to direct assignment
+        console.warn("[VaultMate] Prototype override failed, using direct assignment:", e.message);
+        navigator.credentials.create = vaultmateCreate;
+        navigator.credentials.get = vaultmateGet;
+    }
 })();

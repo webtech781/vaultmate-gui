@@ -89,6 +89,41 @@ def install_for_browser(browser_name, extension_id=""):
             st = os.stat(native_host_path)
             os.chmod(native_host_path, st.st_mode | stat.S_IEXEC)
             
+            if os_name == "Linux":
+                import subprocess
+                flatpak_ids = {
+                    "Firefox": "org.mozilla.firefox",
+                    "Chrome": "com.google.Chrome",
+                    "Chromium": "org.chromium.Chromium",
+                    "Brave": "com.brave.Browser",
+                    "Edge": "com.microsoft.Edge"
+                }
+                if browser_name in flatpak_ids:
+                    app_id = flatpak_ids[browser_name]
+                    # Grant permission for the Flatpak browser to execute the host wrapper script and read the directory
+                    try:
+                        subprocess.run(["flatpak", "override", "--user", "--talk-name=org.freedesktop.Flatpak", f"--filesystem={current_dir}", app_id], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    except Exception:
+                        pass
+                        
+                sh_path = os.path.join(current_dir, "native_host.sh")
+                # Prefer the venv Python so all packages (cryptography, etc.) are available
+                venv_python = os.path.join(current_dir, ".venv", "bin", "python3")
+                python_exe = venv_python if os.path.exists(venv_python) else sys.executable
+                with open(sh_path, "w") as f:
+                    f.write(f'''#!/bin/bash
+# VaultMate Native Host Wrapper - uses venv Python with all required packages
+VENV_PYTHON="{python_exe}"
+NATIVE_HOST="{native_host_path}"
+if [ -f /.flatpak-info ]; then
+    exec flatpak-spawn --host "$VENV_PYTHON" "$NATIVE_HOST" "$@"
+else
+    exec "$VENV_PYTHON" "$NATIVE_HOST" "$@"
+fi
+''')
+                os.chmod(sh_path, st.st_mode | stat.S_IEXEC)
+                manifest["path"] = sh_path
+            
             target_dirs = get_browser_dirs(browser_name)
             if not isinstance(target_dirs, list):
                 target_dirs = [target_dirs]
