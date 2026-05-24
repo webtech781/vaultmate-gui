@@ -1,0 +1,6 @@
+customtkinter
+cryptography
+python-dotenv
+bcrypt
+keyring
+fido2

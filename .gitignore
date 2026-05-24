@@ -172,3 +172,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# VaultMate local files
+vaultmate.db
+Application/vaultmate.db
+vaultmate_config.json
+Application/vaultmate_config.json

@@ -1,150 +1,44 @@
-# VaultMate GUI – Password Manager
+# VaultMate GUI & Browser Extension Combo (V2)
 
-A secure, cross-platform, and modern password manager with a user-friendly GUI built using Python, CustomTkinter, and MongoDB. VaultMate ensures your credentials are encrypted and easily accessible, while prioritizing strong security practices like email verification, 2FA, and hashed authentication.
+VaultMate has evolved into a powerful, offline-first password manager with an integrated browser extension, bringing you cross-platform security with built-in Passkey interception!
 
+## 📁 Project Structure
 
-## 🚀 Features
+This repository is split into two distinct, interconnected components:
 
-✅ User registration and authentication with email verification
+### 1. `Application/`
+The core desktop password manager built with Python, CustomTkinter, and SQLite.
+- **Offline First**: All data is stored locally in `vaultmate.db`.
+- **Bank-Level Encryption**: Passwords are mathematically encrypted via `cryptography.fernet`.
+- **OS Biometrics**: Unlocks seamlessly using your Operating System's credentials (macOS Keychain, Windows Hello, etc.).
+- **Native Host**: Acts as a secure backend to process requests from the browser extension.
 
-🔐 Secure password storage using encryption
+👉 [View Application Documentation](Application/README.md)
 
-🔍 Password search and filter functionality
+### 2. `extension/`
+A custom Chrome/Edge browser extension that bridges your web browser with the VaultMate application.
+- **Passkey Interception**: Injects a script into websites to intercept WebAuthn Passkey requests.
+- **Native Messaging**: Communicates directly with the VaultMate desktop application to fulfill biometric passkey requests from the web.
 
-🗂️ Organize passwords by categories (App/Web/Custom)
+👉 [View Extension Documentation](extension/README.md)
 
-➕ Add, edit, and delete stored passwords
+## 🚀 Quick Start
 
-🔄 Password generator built-in
+1. **Install the Application**: Navigate to `Application/`, setup your python virtual environment, and install `requirements.txt`.
+2. **Load the Extension**: Navigate to `chrome://extensions/` in your browser, turn on Developer Mode, and Load Unpacked the `extension/` directory.
+3. **Link Them**: Copy the loaded Extension ID, paste it into `Application/install_host.sh`, and run the script to link the browser to your VaultMate desktop app!
 
-📤 Import/Export support
+---
 
-👤 Profile management (change password, delete account)
+## 🚀 Upcoming Features
 
-🧠 Admin default account (optional)
+- **Encrypted Cloud Sync**: Seamlessly sync your encrypted vault across devices using Google Drive and Dropbox (currently VaultMate is 100% offline for maximum security).
 
-📧 Gmail integration for verification & password reset
+## 🛠️ Support & Contributions
 
-💻 Cross-platform GUI with CustomTkinter
-
-
-📦 Prerequisites
-Python 3.8 or higher
-
-MongoDB instance (local or cloud)
-
-Gmail account with App Password (2FA enabled)
-
-⚙️ Setup Instructions
-
-1.Clone the Repository :
-```bash
-git clone https://github.com/webtech781/vaultmate-gui.git
-cd vaultmate-gui
-```
-2.Create a Python virtual environment and activate it:
-
-Windows:
-
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-
-macOS/Linux:
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-4. Create a `.env` file
-   In the project root directory, add the following variables:
-```
-MONGODB_URI=mongodb://localhost:27017/
-EMAIL_USER=**********@gmail.com
-EMAIL_PASSWORD=**** **** **** ****
-```
-
-🔐 Note:
-To generate a Gmail App Password:
-
-1). Enable 2-Factor Authentication on your Google account
-
-2). Visit https://myaccount.google.com/apppasswords
-
-3). Generate a password and paste it into EMAIL_PASSWORD
-
-▶️ Running the Application
-Start the GUI application:
-   ```bash
-   python main.py
-   ```
-If provided, you can use default admin credentials:
-
-Username: ```admin```
-
-Password: ```admin123```
-
-🧭 Usage Guide
-🔐 Add New Password
-1). Click “Add Password” (Web or App)
-
-2). Enter details (site/app, username, password, category)
-
-3). Click “Save”
-
-📂 Manage Passwords
-- View all saved entries
-
-- Use search to filter
-
-- Edit or delete entries with action buttons
-
-- Organize passwords via categories
-
-👤 Profile Management
-- Update your password
-
-- View account details
-
-- Delete your account if desired
-
-🧠 Import/Export
-- Export stored data for backup
-
-- Import from a supported format
-
-🔒 Security Highlights
-- Passwords are encrypted before storage
-
-- Authentication passwords are hashed using ```bcrypt```
-
-- Gmail verification for registration and password reset
-
-- Session and input validation for safe usage
-
-- Unique indexing to prevent duplicate entries
-
-💡 Best Practices
-- Never share your master password
-
-- Use strong, unique credentials
-
-- Enable 2FA on all your accounts
-
-- Update passwords regularly
-
-- Keep VaultMate updated for the latest security fixes
-
-🛠️ Support & Contributions
 Have a feature request, bug, or question?
 👉 Open an issue on GitHub
 
-📄 License
-This project is licensed under the MIT License. See the [LICENSE](http://github.com/webtech781/vaultmate-gui?tab=MIT-1-ov-file) file for more information.
+## 📄 License
 
+This project is licensed under the MIT License. See the LICENSE file for more information.
