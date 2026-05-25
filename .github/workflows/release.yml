@@ -3,139 +3,153 @@ name: Build & Release VaultMate
 on:
   push:
     tags:
-      - 'v*.*.*'     # Trigger on version tags: v1.0.0, v1.2.3, etc.
-  workflow_dispatch:  # Manual trigger from GitHub UI
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g. v1.3.0)'
+        required: true
+        default: 'v1.3.0'
 
 permissions:
-  contents: write   # Needed to create GitHub Releases
+  contents: write
+
+# ─────────────────────────────────────────────────
+# Determine version from tag or manual input
+# ─────────────────────────────────────────────────
+env:
+  VERSION: ${{ github.ref_name || inputs.version }}
 
 jobs:
-  # ============================================================
-  # BUILD: Linux (Ubuntu)
-  # ============================================================
+  # ══════════════════════════════════════════════
+  # LINUX — produces VaultMate-v*-linux-x86_64.tar.gz
+  # ══════════════════════════════════════════════
   build-linux:
-    name: Build Linux
+    name: 🐧 Build Linux
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install system dependencies
+      - name: Install system packages
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y python3-tk libsecret-1-dev \
             libdbus-glib-1-dev pkg-config
 
-      - name: Install Python dependencies
+      - name: Install Python deps
         working-directory: Application
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller pillow
+        run: pip install -r requirements.txt pyinstaller pillow
 
-      - name: Build with PyInstaller
+      - name: PyInstaller build
         working-directory: Application
-        env:
-          VAULTMATE_VERSION: ${{ github.ref_name }}
+        run: pyinstaller vaultmate.spec --clean --noconfirm
+
+      - name: Bundle native host
+        working-directory: Application
         run: |
-          pyinstaller vaultmate.spec --clean --noconfirm
           cp native_host.py dist/VaultMate/
-          # Create bundled native host launcher
-          cat > dist/VaultMate/native_host.sh << 'EOF'
+          cat > dist/VaultMate/native_host.sh << 'SHEOF'
           #!/bin/bash
           DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
           exec python3 "$DIR/native_host.py" "$@"
-          EOF
+          SHEOF
           chmod +x dist/VaultMate/native_host.sh
 
-      - name: Package as tar.gz
-        working-directory: Application
+      - name: Package tar.gz
         run: |
-          VERSION="${GITHUB_REF_NAME:-dev}"
-          tar -czf "../VaultMate-${VERSION}-linux-x86_64.tar.gz" -C dist VaultMate/
-          echo "ARCHIVE=VaultMate-${VERSION}-linux-x86_64.tar.gz" >> $GITHUB_ENV
+          VERSION="${{ env.VERSION }}"
+          cd Application/dist
+          tar -czf "../../VaultMate-${VERSION}-linux-x86_64.tar.gz" VaultMate/
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: ${{ env.ARCHIVE }}
+          path: VaultMate-*-linux-x86_64.tar.gz
 
-  # ============================================================
-  # BUILD: Windows
-  # ============================================================
+  # ══════════════════════════════════════════════
+  # WINDOWS — produces VaultMate-Setup-v*-windows.exe
+  # ══════════════════════════════════════════════
   build-windows:
-    name: Build Windows
+    name: 🪟 Build Windows Installer
     runs-on: windows-2022
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install Python dependencies
+      - name: Install Python deps
         working-directory: Application
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller pillow
+        run: pip install -r requirements.txt pyinstaller pillow
 
-      - name: Build with PyInstaller
+      - name: PyInstaller build
         working-directory: Application
-        run: |
-          pyinstaller vaultmate.spec --clean --noconfirm
-          Copy-Item native_host.py dist\VaultMate\
+        run: pyinstaller vaultmate.spec --clean --noconfirm
 
-      - name: Package as ZIP
+      - name: Bundle native host
         working-directory: Application
         shell: pwsh
         run: |
-          $VERSION = "$env:GITHUB_REF_NAME"
-          if (-not $VERSION) { $VERSION = "dev" }
-          Compress-Archive -Path dist\VaultMate\* `
-            -DestinationPath "..\VaultMate-${VERSION}-windows-x64.zip" -Force
-          echo "ARCHIVE=VaultMate-${VERSION}-windows-x64.zip" | Out-File -Append $env:GITHUB_ENV
+          Copy-Item native_host.py dist\VaultMate\
+          # Windows native host wrapper batch file
+          Set-Content dist\VaultMate\native_host.bat '@echo off
+          set "DIR=%~dp0"
+          "%DIR%native_host.exe" %* 2>nul || python "%DIR%native_host.py" %*'
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Install NSIS
+        run: choco install nsis -y --no-progress
+
+      - name: Build NSIS installer
+        shell: pwsh
+        env:
+          VAULTMATE_VERSION: ${{ env.VERSION }}
+        run: |
+          $version = $env:VAULTMATE_VERSION
+          # Patch version into NSI
+          $nsi = Get-Content installer\vaultmate.nsi -Raw
+          $nsi = $nsi -replace '\$%VAULTMATE_VERSION%', $version
+          Set-Content installer\vaultmate_patched.nsi $nsi
+          # Run makensis from the repo root so relative paths work
+          & "C:\Program Files (x86)\NSIS\makensis.exe" /V2 installer\vaultmate_patched.nsi
+          # Rename output to include version
+          $out = "VaultMate-Setup-${version}-windows.exe"
+          Move-Item "VaultMate-Setup-${version}-windows.exe" $out -ErrorAction SilentlyContinue
+          Get-ChildItem *.exe
+
+      - uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: ${{ env.ARCHIVE }}
+          path: VaultMate-Setup-*.exe
 
-  # ============================================================
-  # BUILD: macOS (Intel + Apple Silicon)
-  # ============================================================
+  # ══════════════════════════════════════════════
+  # MACOS — produces VaultMate-v*-macOS-arm64.dmg
+  # ══════════════════════════════════════════════
   build-macos:
-    name: Build macOS
-    runs-on: macos-14       # Apple Silicon runner (arm64)
+    name: 🍎 Build macOS DMG
+    runs-on: macos-14   # Apple Silicon
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install create-dmg
         run: brew install create-dmg
 
-      - name: Install Python dependencies
+      - name: Install Python deps
         working-directory: Application
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller pillow
+        run: pip install -r requirements.txt pyinstaller pillow
 
-      - name: Build with PyInstaller
+      - name: PyInstaller build
         working-directory: Application
         run: pyinstaller vaultmate.spec --clean --noconfirm
 
@@ -143,85 +157,76 @@ jobs:
         working-directory: Application
         run: |
           RESOURCES="dist/VaultMate.app/Contents/Resources"
+          mkdir -p "$RESOURCES"
           cp native_host.py "$RESOURCES/"
-          cat > "$RESOURCES/native_host.sh" << 'EOF'
+          cat > "$RESOURCES/native_host.sh" << 'SHEOF'
           #!/bin/bash
           DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
           exec python3 "$DIR/native_host.py" "$@"
-          EOF
+          SHEOF
           chmod +x "$RESOURCES/native_host.sh"
 
       - name: Create DMG
-        working-directory: Application
         run: |
-          VERSION="${GITHUB_REF_NAME:-dev}"
+          VERSION="${{ env.VERSION }}"
           ARCH="$(uname -m)"
           DMG="VaultMate-${VERSION}-macOS-${ARCH}.dmg"
           create-dmg \
             --volname "VaultMate" \
+            --volicon "Application/icon256.png" \
             --window-pos 200 120 \
-            --window-size 600 400 \
+            --window-size 600 380 \
             --icon-size 100 \
-            --icon "VaultMate.app" 175 190 \
+            --icon "VaultMate.app" 175 180 \
             --hide-extension "VaultMate.app" \
-            --app-drop-link 425 190 \
-            "../${DMG}" \
-            "dist/VaultMate.app"
-          echo "ARCHIVE=${DMG}" >> $GITHUB_ENV
+            --app-drop-link 420 180 \
+            "$DMG" \
+            "Application/dist/VaultMate.app"
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: macos-build
-          path: ${{ env.ARCHIVE }}
+          path: VaultMate-*-macOS-*.dmg
 
-  # ============================================================
-  # RELEASE: Publish all builds to GitHub Releases
-  # ============================================================
+  # ══════════════════════════════════════════════
+  # RELEASE — attach all 3 to a GitHub Release
+  # ══════════════════════════════════════════════
   release:
-    name: Create GitHub Release
+    name: 📦 Publish Release
     needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
 
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           path: release-assets
           merge-multiple: true
 
-      - name: List release assets
+      - name: List assets
         run: ls -lh release-assets/
 
-      - name: Publish GitHub Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "VaultMate ${{ github.ref_name }}"
+          name: "VaultMate ${{ env.VERSION }}"
           body: |
-            ## 🔐 VaultMate ${{ github.ref_name }}
+            ## 🔐 VaultMate ${{ env.VERSION }}
 
-            ### Downloads
+            ### ⬇️ Direct Downloads
 
-            | Platform | File |
-            |---|---|
-            | 🐧 Linux (x86_64) | `VaultMate-${{ github.ref_name }}-linux-x86_64.tar.gz` |
-            | 🪟 Windows (64-bit) | `VaultMate-${{ github.ref_name }}-windows-x64.zip` |
-            | 🍎 macOS (Apple Silicon / Intel) | `VaultMate-${{ github.ref_name }}-macOS-*.dmg` |
+            | Platform | Download | Notes |
+            |---|---|---|
+            | 🐧 **Linux** (x86_64) | `VaultMate-${{ env.VERSION }}-linux-x86_64.tar.gz` | Extract & run `./VaultMate` |
+            | 🪟 **Windows** (10/11) | `VaultMate-Setup-${{ env.VERSION }}-windows.exe` | Run installer → Desktop shortcut created |
+            | 🍎 **macOS** (12+) | `VaultMate-${{ env.VERSION }}-macOS-arm64.dmg` | Open DMG → drag to Applications |
 
-            ### Installation
+            ### 🦊 Firefox Extension (Fully Tested ✅)
+            Load `extension-firefox/` via `about:debugging` in Firefox.
 
-            **Linux:** `tar -xzf VaultMate-*-linux-x86_64.tar.gz && cd VaultMate && ./VaultMate`
-
-            **Windows:** Unzip and double-click `VaultMate.exe`
-
-            **macOS:** Open the `.dmg` and drag `VaultMate.app` to Applications
-
-            ### Browser Extensions
-
-            Load the extension folder from the repository manually in developer mode:
-            - **Firefox:** `extension-firefox/` via `about:debugging`
-            - **Chrome/Brave:** `extension-chrome/` via `chrome://extensions`
+            ### 🔗 After Installing
+            Open VaultMate → click **Browser Integrations** → **Add +** to connect your browser.
           draft: false
           prerelease: false
+          fail_on_unmatched_files: false
           files: release-assets/*

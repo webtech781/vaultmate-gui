@@ -15,45 +15,41 @@ VaultMate is a powerful, open-source password manager and **software passkey aut
 
 ## ⬇️ Download & Install
 
-> **No Python needed.** Download the pre-built package for your OS below.
+> **No Python needed. No command line required.** Just download and run.
 
-### 🐧 Linux (x86_64)
+### 🪟 Windows — One-Click Installer
+
+**[⬇️ Download VaultMate-Setup-windows.exe](https://github.com/webtech781/vaultmate-gui/releases/latest/download/VaultMate-Setup-v1.3.0-windows.exe)**
+
+1. Download `VaultMate-Setup-*.exe`
+2. Run it — click **Next → Install → Finish**
+3. VaultMate appears on your **Desktop** and **Start Menu** automatically
+
+> Installs to `Program Files`, adds to Add/Remove Programs, creates shortcuts.
+
+### 🍎 macOS — DMG Package
+
+**[⬇️ Download VaultMate-macOS.dmg](https://github.com/webtech781/vaultmate-gui/releases/latest)**
+
+1. Download `VaultMate-*-macOS-*.dmg`
+2. Open the `.dmg` file
+3. **Drag VaultMate → Applications** (single drag-and-drop, done!)
+4. First launch: **Right-click → Open** (bypasses Gatekeeper on unnotarized builds)
+
+### 🐧 Linux — Portable Bundle
+
+**[⬇️ Download VaultMate-linux-x86_64.tar.gz](https://github.com/webtech781/vaultmate-gui/releases/latest)**
 
 ```bash
-# Download the latest release
-wget https://github.com/webtech781/vaultmate-gui/releases/latest/download/VaultMate-linux-x86_64.tar.gz
-
-# Extract
-tar -xzf VaultMate-linux-x86_64.tar.gz
-
-# Run
+tar -xzf VaultMate-*-linux-x86_64.tar.gz
 cd VaultMate && ./VaultMate
 ```
 
-> **Fedora/RHEL users:** If the app doesn't launch, install the Tk system library:
+> **If the app doesn't launch**, install the Tk system library first:
 > ```bash
-> sudo dnf install python3-tkinter
+> sudo dnf install python3-tkinter   # Fedora/RHEL
+> sudo apt install python3-tk        # Ubuntu/Debian
 > ```
-> **Ubuntu/Debian:**
-> ```bash
-> sudo apt install python3-tk
-> ```
-
-### 🪟 Windows (10 / 11, 64-bit)
-
-1. Go to [**Releases → Latest**](https://github.com/webtech781/vaultmate-gui/releases/latest)
-2. Download `VaultMate-windows-x64.zip`
-3. **Right-click → Extract All**
-4. Open the `VaultMate` folder and double-click **`VaultMate.exe`**
-
-> No installer needed. VaultMate is fully portable — runs from any folder.
-
-### 🍎 macOS (12 Monterey or later — Intel & Apple Silicon)
-
-1. Go to [**Releases → Latest**](https://github.com/webtech781/vaultmate-gui/releases/latest)
-2. Download `VaultMate-macOS-*.dmg`
-3. Open the `.dmg` and **drag VaultMate.app to Applications**
-4. First launch: Right-click → Open (macOS Gatekeeper warning for unsigned apps)
 
 ---
 
