@@ -8,6 +8,7 @@
 [![macOS](https://img.shields.io/badge/macOS-12%2B-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/webtech781/vaultmate-gui/releases/latest)
 [![Firefox](https://img.shields.io/badge/Firefox-Fully%20Tested%20✅-FF7139?style=for-the-badge&logo=firefox&logoColor=white)](https://github.com/webtech781/vaultmate-gui/tree/main/extension-firefox)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![Download on SourceForge](https://a.fsdn.com/con/app/sf-download-button)](https://sourceforge.net/projects/vaultmate-gui/files/latest/download)
 
 VaultMate is a powerful, open-source password manager and **software passkey authenticator** that runs entirely on your local machine. It pairs a Python desktop GUI with a browser extension, giving you secure credential autofill and passkey interception directly in your browser — without ever sending your data anywhere.
 
