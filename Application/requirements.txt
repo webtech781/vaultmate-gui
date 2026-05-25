@@ -4,3 +4,4 @@ python-dotenv
 bcrypt
 keyring
 fido2
+cbor2
