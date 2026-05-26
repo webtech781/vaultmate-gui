@@ -132,17 +132,18 @@ jobs:
           $bin = Join-Path $wixDir.FullName "bin"
           Write-Host "Using WiX at: $bin"
 
-          # Compile .wxs → .wixobj
+          # Compile .wxs → .wixobj  (vaultmate.wxs + CustomUI.wxs)
           & "$bin\candle.exe" -nologo -arch x64 `
             -ext WixUIExtension -ext WixUtilExtension `
-            installer\vaultmate.wxs -out installer\vaultmate.wixobj
+            installer\vaultmate.wxs installer\CustomUI.wxs `
+            -out installer\
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           # Link .wixobj → .msi
           & "$bin\light.exe" -nologo `
             -ext WixUIExtension -ext WixUtilExtension `
             -cultures:en-us `
-            installer\vaultmate.wixobj `
+            installer\vaultmate.wixobj installer\CustomUI.wixobj `
             -out "VaultMate-Setup-v${ver}-windows.msi"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

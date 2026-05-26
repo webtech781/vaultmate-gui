@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  VaultMate Custom Installer UI
+  Replaces WixUI_FeatureTree so we can customise the ProgressDlg
+  to add an inline Show / Hide Logs panel.
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+<Fragment>
+<UI Id="VaultMateUI">
+
+  <!-- ═══ Text styles ═══════════════════════════════════════════════════════ -->
+  <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
+  <TextStyle Id="WixUI_Font_Bigger" FaceName="Tahoma" Size="12" />
+  <TextStyle Id="WixUI_Font_Title"  FaceName="Tahoma" Size="9" Bold="yes" />
+
+  <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+
+  <!-- ═══ Error / system dialogs (kept from WixUI library) ════════════════ -->
+  <DialogRef Id="ErrorDlg"           />
+  <DialogRef Id="FatalErrorDlg"      />
+  <DialogRef Id="FilesInUseDlg"      />
+  <DialogRef Id="MsiRMFilesInUseDlg" />
+  <DialogRef Id="PrepareDlg"         />
+  <DialogRef Id="ResumeDlg"          />
+  <DialogRef Id="UserExitDlg"        />
+
+  <!-- ═══ InstallUISequence ════════════════════════════════════════════════ -->
+  <InstallUISequence>
+    <Show Dialog="PrepareDlg"       Before="WelcomeDlg" />
+    <Show Dialog="WelcomeDlg"       After="PrepareDlg"     >NOT Installed</Show>
+    <Show Dialog="LicenseDlg"       After="WelcomeDlg"     >NOT Installed</Show>
+    <Show Dialog="FeaturesDlg"      After="LicenseDlg"     >NOT Installed</Show>
+    <Show Dialog="VerifyReadyDlg"   After="FeaturesDlg"    >NOT Installed</Show>
+    <Show Dialog="VmProgressDlg"    After="VerifyReadyDlg" />
+    <Show Dialog="VmExitDlg"        After="VmProgressDlg"  />
+  </InstallUISequence>
+
+  <!-- ═══ Navigation events ════════════════════════════════════════════════ -->
+
+  <!-- WelcomeDlg -->
+  <Publish Dialog="WelcomeDlg"     Control="Next"   Event="NewDialog"   Value="LicenseDlg"     >1</Publish>
+  <Publish Dialog="WelcomeDlg"     Control="Cancel" Event="SpawnDialog" Value="CancelDlg"      >1</Publish>
+
+  <!-- LicenseDlg -->
+  <Publish Dialog="LicenseDlg"     Control="Back"   Event="NewDialog"   Value="WelcomeDlg"     >1</Publish>
+  <Publish Dialog="LicenseDlg"     Control="Next"   Event="NewDialog"   Value="FeaturesDlg"    >LicenseAccepted = "1"</Publish>
+  <Publish Dialog="LicenseDlg"     Control="Cancel" Event="SpawnDialog" Value="CancelDlg"      >1</Publish>
+
+  <!-- FeaturesDlg -->
+  <Publish Dialog="FeaturesDlg"    Control="Back"   Event="NewDialog"   Value="LicenseDlg"     >1</Publish>
+  <Publish Dialog="FeaturesDlg"    Control="Next"   Event="NewDialog"   Value="VerifyReadyDlg" >1</Publish>
+  <Publish Dialog="FeaturesDlg"    Control="Cancel" Event="SpawnDialog" Value="CancelDlg"      >1</Publish>
+
+  <!-- VerifyReadyDlg -->
+  <Publish Dialog="VerifyReadyDlg" Control="Back"   Event="NewDialog"   Value="FeaturesDlg"    >1</Publish>
+  <Publish Dialog="VerifyReadyDlg" Control="Install" Event="EndDialog"  Value="Return"         >1</Publish>
+  <Publish Dialog="VerifyReadyDlg" Control="Cancel" Event="SpawnDialog" Value="CancelDlg"      >1</Publish>
+
+  <!-- VmProgressDlg — Show Logs button -->
+  <Publish Dialog="VmProgressDlg"  Control="ShowLogsBt"
+           Property="SHOW_LOGS" Value="1">1</Publish>
+  <Publish Dialog="VmProgressDlg"  Control="ShowLogsBt"
+           Event="DoAction" Value="CA_ReadLog">1</Publish>
+  <Publish Dialog="VmProgressDlg"  Control="HideLogsBt"
+           Property="SHOW_LOGS" Value="{}">1</Publish>
+  <Publish Dialog="VmProgressDlg"  Control="Cancel"
+           Event="SpawnDialog" Value="CancelDlg">1</Publish>
+
+  <!-- VmExitDlg — View Log button opens Notepad -->
+  <Publish Dialog="VmExitDlg"      Control="ViewLogBt"
+           Event="DoAction" Value="CA_OpenLog">1</Publish>
+  <Publish Dialog="VmExitDlg"      Control="Finish"
+           Event="EndDialog" Value="Return">1</Publish>
+
+  <!-- CancelDlg -->
+  <Publish Dialog="CancelDlg"      Control="Return" Event="EndDialog" Value="Return">1</Publish>
+  <Publish Dialog="CancelDlg"      Control="Exit"   Event="EndDialog" Value="Exit">1</Publish>
+
+</UI>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     DIALOGS
+════════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ── WelcomeDlg ─────────────────────────────────────────────────────────── -->
+<UI>
+<Dialog Id="WelcomeDlg" Width="370" Height="270" Title="VaultMate Setup">
+  <Control Id="Bmp"         Type="Bitmap"     X="0"   Y="0"   W="164" H="270" TabSkip="no" Text="WixUI_Bmp_Dialog" />
+  <Control Id="BottomLine"  Type="Line"       X="0"   Y="234" W="370" H="0" />
+  <Control Id="Title"       Type="Text"       X="135" Y="20"  W="220" H="60" Transparent="yes" NoPrefix="yes">
+    <Text>{\WixUI_Font_Bigger}Welcome to the VaultMate Setup Wizard</Text>
+  </Control>
+  <Control Id="Desc"        Type="Text"       X="135" Y="80"  W="220" H="80" Transparent="yes" NoPrefix="yes">
+    <Text>This wizard will install VaultMate on your computer. Click Next to continue.</Text>
+  </Control>
+  <Control Id="Next"        Type="PushButton" X="236" Y="243" W="56"  H="17" Default="yes" Text="&amp;Next >" />
+  <Control Id="Cancel"      Type="PushButton" X="304" Y="243" W="56"  H="17" Cancel="yes"  Text="Cancel" />
+  <Control Id="Back"        Type="PushButton" X="180" Y="243" W="56"  H="17" Disabled="yes" Text="&lt; &amp;Back" />
+</Dialog>
+
+<!-- ── LicenseDlg ────────────────────────────────────────────────────────── -->
+<Dialog Id="LicenseDlg" Width="370" Height="270" Title="VaultMate Setup — License Agreement">
+  <Control Id="BannerBmp"   Type="Bitmap"     X="0"   Y="0"   W="370" H="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
+  <Control Id="BannerLine"  Type="Line"       X="0"   Y="44"  W="370" H="0" />
+  <Control Id="BottomLine"  Type="Line"       X="0"   Y="234" W="370" H="0" />
+  <Control Id="Title"       Type="Text"       X="15"  Y="6"   W="200" H="15" Transparent="yes" NoPrefix="yes">
+    <Text>{\WixUI_Font_Title}End-User License Agreement</Text>
+  </Control>
+  <Control Id="Desc"        Type="Text"       X="25"  Y="23"  W="320" H="15" Transparent="yes" NoPrefix="yes">
+    <Text>Please read the following license agreement carefully.</Text>
+  </Control>
+  <!-- ScrollableText reads RTF content from WixUI_LicenseText property -->
+  <Control Id="LicText"     Type="ScrollableText" X="20" Y="45" W="330" H="155" Sunken="yes" TabSkip="no" Text="[WixUI_LicenseText]" />
+  <Control Id="Accept"      Type="CheckBox"   X="20"  Y="206" W="290" H="15" Property="LicenseAccepted" CheckBoxValue="1" Text="I accept the terms in the License Agreement" />
+  <Control Id="Back"        Type="PushButton" X="180" Y="243" W="56"  H="17" Text="&lt; &amp;Back" />
+  <Control Id="Next"        Type="PushButton" X="236" Y="243" W="56"  H="17" Default="yes" Text="&amp;Next >">
+    <Condition Action="disable">LicenseAccepted &lt;&gt; "1"</Condition>
+    <Condition Action="enable">LicenseAccepted = "1"</Condition>
+  </Control>
+  <Control Id="Cancel"      Type="PushButton" X="304" Y="243" W="56"  H="17" Cancel="yes"  Text="Cancel" />
+</Dialog>
+
+<!-- ── FeaturesDlg (Desktop Shortcut checkbox) ────────────────────────────── -->
+<Dialog Id="FeaturesDlg" Width="370" Height="270" Title="VaultMate Setup — Options">
+  <Control Id="BannerBmp"   Type="Bitmap"     X="0"   Y="0"   W="370" H="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
+  <Control Id="BannerLine"  Type="Line"       X="0"   Y="44"  W="370" H="0" />
+  <Control Id="BottomLine"  Type="Line"       X="0"   Y="234" W="370" H="0" />
+  <Control Id="Title"       Type="Text"       X="15"  Y="6"   W="200" H="15" Transparent="yes" NoPrefix="yes">
+    <Text>{\WixUI_Font_Title}Installation Options</Text>
+  </Control>
+  <Control Id="Desc"        Type="Text"       X="25"  Y="23"  W="320" H="15" Transparent="yes" NoPrefix="yes">
+    <Text>Select optional features to install.</Text>
+  </Control>
+  <Control Id="FeatureTree" Type="SelectionTree" X="25" Y="55" W="320" H="155" Property="WIXUI_INSTALLDIR" Sunken="yes" TabSkip="no" Text="{120}{70}{70}" />
+  <Control Id="Back"        Type="PushButton" X="180" Y="243" W="56"  H="17" Text="&lt; &amp;Back" />
+  <Control Id="Next"        Type="PushButton" X="236" Y="243" W="56"  H="17" Default="yes" Text="&amp;Next >" />
+  <Control Id="Cancel"      Type="PushButton" X="304" Y="243" W="56"  H="17" Cancel="yes"  Text="Cancel" />
+</Dialog>
+
+<!-- ── VerifyReadyDlg ─────────────────────────────────────────────────────── -->
+<Dialog Id="VerifyReadyDlg" Width="370" Height="270" Title="VaultMate Setup — Ready to Install">
+  <Control Id="BannerBmp"   Type="Bitmap"     X="0"   Y="0"   W="370" H="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
+  <Control Id="BannerLine"  Type="Line"       X="0"   Y="44"  W="370" H="0" />
+  <Control Id="BottomLine"  Type="Line"       X="0"   Y="234" W="370" H="0" />
+  <Control Id="Title"       Type="Text"       X="15"  Y="6"   W="200" H="15" Transparent="yes" NoPrefix="yes">
+    <Text>{\WixUI_Font_Title}Ready to Install</Text>
+  </Control>
+  <Control Id="Desc"        Type="Text"       X="25"  Y="23"  W="320" H="40" Transparent="yes" NoPrefix="yes">
+    <Text>Click Install to begin. VaultMate will be installed to C:\VaultMate.</Text>
+  </Control>
+  <Control Id="Back"        Type="PushButton" X="180" Y="243" W="56"  H="17" Text="&lt; &amp;Back" />
+  <Control Id="Install"     Type="PushButton" X="236" Y="243" W="56"  H="17" Default="yes" Text="&amp;Install" />
+  <Control Id="Cancel"      Type="PushButton" X="304" Y="243" W="56"  H="17" Cancel="yes"  Text="Cancel" />
+</Dialog>
+
+<!-- ── VmProgressDlg ── custom with Show / Hide Logs ─────────────────────── -->
+<Dialog Id="VmProgressDlg" Width="370" Height="270" Title="VaultMate Setup — Installing">
+  <Control Id="BannerBmp"   Type="Bitmap"       X="0"   Y="0"   W="370" H="44"  TabSkip="no" Text="WixUI_Bmp_Banner" />
+  <Control Id="BannerLine"  Type="Line"         X="0"   Y="44"  W="370" H="0" />
+  <Control Id="BottomLine"  Type="Line"         X="0"   Y="234" W="370" H="0" />
+  <Control Id="Title"       Type="Text"         X="15"  Y="6"   W="200" H="15"  Transparent="yes" NoPrefix="yes">
+    <Text>{\WixUI_Font_Title}Installing VaultMate</Text>
+  </Control>
+  <Control Id="Desc"        Type="Text"         X="25"  Y="23"  W="320" H="15"  Transparent="yes" NoPrefix="yes">
+    <Text>Please wait while the Setup Wizard installs VaultMate.</Text>
+  </Control>
+
+  <!-- Status label + progress bar -->
+  <Control Id="StatusLabel" Type="Text"         X="20"  Y="55"  W="50"  H="10"  Transparent="yes" Text="Status:" />
+  <Control Id="ProgressBar" Type="ProgressBar"  X="20"  Y="68"  W="330" H="15"  ProgressBlocks="yes" Text="Progress done" />
+  <Control Id="ActionText"  Type="Text"         X="20"  Y="88"  W="250" H="10"  Transparent="yes" Text="[ActionText]" />
+
+  <!-- Show Logs button — visible when log is hidden -->
+  <Control Id="ShowLogsBt"  Type="PushButton"   X="280" Y="85"  W="70"  H="14"  Text="Show Logs ▼">
+    <Condition Action="show">NOT SHOW_LOGS = "1"</Condition>
+    <Condition Action="hide">SHOW_LOGS = "1"</Condition>
+  </Control>
+
+  <!-- Hide Logs button — visible when log is shown -->
+  <Control Id="HideLogsBt"  Type="PushButton"   X="280" Y="85"  W="70"  H="14"  Text="Hide Logs ▲" Hidden="yes">
+    <Condition Action="show">SHOW_LOGS = "1"</Condition>
+    <Condition Action="hide">NOT SHOW_LOGS = "1"</Condition>
+  </Control>
+
+  <!-- Inline log panel — same style as the license text box -->
+  <Control Id="LogText"     Type="ScrollableText" X="20" Y="103" W="330" H="120" Sunken="yes" TabSkip="no"
+           Text="[VAULTMATE_LOG_CONTENT]" Hidden="yes">
+    <Condition Action="show">SHOW_LOGS = "1"</Condition>
+    <Condition Action="hide">NOT SHOW_LOGS = "1"</Condition>
+  </Control>
+
+  <Control Id="Back"        Type="PushButton"   X="180" Y="243" W="56"  H="17"  Disabled="yes" Text="&lt; &amp;Back" />
+  <Control Id="Next"        Type="PushButton"   X="236" Y="243" W="56"  H="17"  Disabled="yes" Text="&amp;Next >" />
+  <Control Id="Cancel"      Type="PushButton"   X="304" Y="243" W="56"  H="17"  Cancel="yes"   Text="Cancel" />
+</Dialog>
+
+<!-- ── VmExitDlg ──────────────────────────────────────────────────────────── -->
+<Dialog Id="VmExitDlg" Width="370" Height="270" Title="VaultMate Setup — Completed">
+  <Control Id="Bmp"         Type="Bitmap"     X="0"   Y="0"   W="164" H="270" TabSkip="no" Text="WixUI_Bmp_Dialog" />
+  <Control Id="BottomLine"  Type="Line"       X="0"   Y="234" W="370" H="0" />
+  <Control Id="Title"       Type="Text"       X="135" Y="20"  W="220" H="60" Transparent="yes" NoPrefix="yes">
+    <Text>{\WixUI_Font_Bigger}Completed the VaultMate Setup Wizard</Text>
+  </Control>
+  <Control Id="Desc"        Type="Text"       X="135" Y="85"  W="220" H="60" Transparent="yes" NoPrefix="yes">
+    <Text>Click Finish to exit the Setup Wizard. VaultMate is building in the background — check the log for details.</Text>
+  </Control>
+  <Control Id="ViewLogBt"   Type="PushButton" X="135" Y="155" W="90"  H="17" Text="View Install Log" />
+  <Control Id="Finish"      Type="PushButton" X="236" Y="243" W="56"  H="17" Default="yes" Text="&amp;Finish" />
+  <Control Id="Cancel"      Type="PushButton" X="304" Y="243" W="56"  H="17" Cancel="yes"  Text="Cancel" />
+  <Control Id="Back"        Type="PushButton" X="180" Y="243" W="56"  H="17" Disabled="yes" Text="&lt; &amp;Back" />
+</Dialog>
+
+<!-- ── CancelDlg ─────────────────────────────────────────────────────────── -->
+<Dialog Id="CancelDlg" Width="260" Height="85" Title="VaultMate Setup" NoMinimize="yes">
+  <Control Id="Question"    Type="Text"       X="48"  Y="15"  W="194" H="30" Text="Are you sure you want to cancel VaultMate installation?" />
+  <Control Id="Return"      Type="PushButton" X="100" Y="57"  W="56"  H="17" Default="yes" Text="&amp;Return" />
+  <Control Id="Exit"        Type="PushButton" X="164" Y="57"  W="56"  H="17" Cancel="yes"  Text="E&amp;xit" />
+</Dialog>
+
+</UI>
+</Fragment>
+</Wix>

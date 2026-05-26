@@ -5,7 +5,8 @@
 # =============================================================================
 param()
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
+$global:SetupError = $null
 
 # ── Parse CustomActionData passed by MSI ─────────────────────────────────────
 $raw = $env:VAULTMATE_CA_DATA   # set by the immediate CA via env var trick
@@ -29,6 +30,7 @@ function Log($msg) {
     Write-Host "$ts  $msg"
 }
 
+try {
 Log "=== VaultMate Setup Helper Started ==="
 Log "InstallDir : $InstallDir"
 Log "Desktop    : $WantDesktop"
@@ -108,3 +110,11 @@ if ($WantDesktop -eq "1" -and (Test-Path $exePath)) {
 }
 
 Log "=== VaultMate Setup Helper Finished ==="
+} catch {
+    $global:SetupError = $_.Exception.Message
+    Log "ERROR: $global:SetupError"
+    Log "See full log at: $logFile"
+}
+# Always exit 0 so the MSI wizard completes cleanly.
+# The user can review the log file at: $logFile
+exit 0

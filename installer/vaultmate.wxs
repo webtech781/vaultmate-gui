@@ -175,7 +175,7 @@
                   ExeCommand="[SystemFolder]WindowsPowerShell\v1.0\powershell.exe -NonInteractive -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command &quot;$env:VAULTMATE_CA_DATA='[CustomActionData]'; &amp; '[INSTALLDIR]_setup\setup_build.ps1'&quot;"
                   Execute="deferred"
                   Impersonate="no"
-                  Return="check" />
+                  Return="ignore" />
 
     <!-- Deferred: remove the _setup helper dir (source is now in INSTALLDIR proper) -->
     <CustomAction Id="CA_CleanHelper"
@@ -199,20 +199,40 @@
       <Custom Action="CA_CleanHelper" After="CA_RunSetup">NOT Installed</Custom>
     </InstallExecuteSequence>
 
-    <!-- ═══════════════════════════════════════════════════════════════════════
-         UI  (WiX FeatureTree = shows optional Desktop Shortcut checkbox)
-    ═══════════════════════════════════════════════════════════════════════════ -->
-    <UIRef Id="WixUI_FeatureTree" />
+    <!-- === UI — custom UI with inline log viewer === -->
+    <UIRef Id="VaultMateUI" />
     <UIRef Id="WixUI_ErrorProgressText" />
 
-    <!-- Override the default banner / background images -->
-    <!--
-    <WixVariable Id="WixUIBannerBmp"     Value="banner.bmp" />
-    <WixVariable Id="WixUIDialogBmp"     Value="dialog.bmp" />
-    -->
-
-    <!-- Skip the "Disk Cost" dialog that sometimes appears -->
+    <!-- License RTF embedded by WiX -->
     <WixVariable Id="WixUILicenseRtf" Value="..\LICENSE.rtf" />
+
+    <!-- CA: read setup log into VAULTMATE_LOG_CONTENT (Show Logs panel) -->
+    <CustomAction Id="CA_ReadLog" Script="vbscript" Execute="immediate" Return="ignore"><![CDATA[
+      On Error Resume Next
+      Dim fso, f, log, logPath
+      logPath = Session.Property("TEMP") & "\vaultmate_setup.log"
+      Set fso = CreateObject("Scripting.FileSystemObject")
+      If fso.FileExists(logPath) Then
+        Set f = fso.OpenTextFile(logPath, 1)
+        log = f.ReadAll()
+        f.Close()
+        If Len(log) > 28000 Then
+          log = "...(last 28000 chars)..." & Chr(13) & Mid(log, Len(log) - 28000)
+        End If
+      Else
+        log = "Log not available yet." & Chr(13) & Chr(10) & _
+              "Path: " & logPath & Chr(13) & Chr(10) & _
+              "The build helper starts after files are copied."
+      End If
+      Session.Property("VAULTMATE_LOG_CONTENT") = log
+    ]]></CustomAction>
+
+    <!-- CA: open log in Notepad from the Finish dialog -->
+    <CustomAction Id="CA_OpenLog"
+                  Directory="TARGETDIR"
+                  ExeCommand="[SystemFolder]notepad.exe [%TEMP]\vaultmate_setup.log"
+                  Execute="immediate"
+                  Return="ignore" />
 
   </Product>
 </Wix>
