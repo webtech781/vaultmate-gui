@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  VaultMate Windows Installer (.msi)
+  Built with WiX Toolset v3
+
+  What the MSI does (at install time on the user's PC):
+    1. Checks for Python 3.11+, installs silently if missing
+    2. Downloads VaultMate source from GitHub → C:\VaultMate (or chosen dir)
+    3. Runs Application\build_windows.bat in the background
+    4. Creates Start Menu shortcut (always)
+    5. Creates Desktop shortcut (optional Feature — user can uncheck)
+    6. Registers in Add / Remove Programs with Uninstall support
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+
+  <Product Id="*"
+           Name="VaultMate"
+           Language="1033"
+           Version="$(env.VAULTMATE_VERSION)"
+           Manufacturer="webtech781"
+           UpgradeCode="7A3F2C1D-8E4B-4A9F-B6D0-2C5E8F1A9B3C">
+
+    <Package InstallerVersion="500"
+             Compressed="yes"
+             InstallScope="perMachine"
+             Description="VaultMate — Offline Password Manager &amp; Passkey Authenticator"
+             Comments="https://github.com/webtech781/vaultmate-gui" />
+
+    <!-- Prevent downgrade -->
+    <MajorUpgrade DowngradeErrorMessage="A newer version of VaultMate is already installed." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         PROPERTIES
+    ═══════════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Desktop shortcut property (1 = create). Controlled by Feature selection. -->
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
+    <Property Id="ApplicationFolderName" Value="VaultMate" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         DIRECTORY STRUCTURE
+    ═══════════════════════════════════════════════════════════════════════════ -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+
+      <!-- Main install location: C:\VaultMate -->
+      <Directory Id="INSTALLDIR" Name="VaultMate">
+        <!-- Helper PS1 lives here (separate from downloaded source) -->
+        <Directory Id="HELPERDIR" Name="_setup" />
+      </Directory>
+
+      <!-- Start Menu -->
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="AppMenuFolder" Name="VaultMate" />
+      </Directory>
+
+      <!-- Desktop -->
+      <Directory Id="DesktopFolder" Name="Desktop" />
+
+    </Directory>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         COMPONENTS
+    ═══════════════════════════════════════════════════════════════════════════ -->
+
+    <!-- 1. Embedded PowerShell setup helper (installed before the CA runs) -->
+    <DirectoryRef Id="HELPERDIR">
+      <Component Id="C_SetupHelper" Guid="A1B2C3D4-E5F6-7890-ABCD-EF1234567890">
+        <File Id="F_SetupHelper"
+              Name="setup_build.ps1"
+              Source="setup_build.ps1"
+              KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <!-- 2. Start Menu shortcut — always installed -->
+    <DirectoryRef Id="AppMenuFolder">
+      <Component Id="C_StartMenuShortcut"
+                 Guid="B2C3D4E5-F6A7-8901-BCDE-F12345678901">
+        <Shortcut Id="StartMenuShortcut"
+                  Name="VaultMate"
+                  Target="[INSTALLDIR]Application\dist\VaultMate\VaultMate.exe"
+                  WorkingDirectory="INSTALLDIR"
+                  Icon="VaultMateIco"
+                  IconIndex="0"
+                  Description="VaultMate Password Manager" />
+        <!-- KeyPath via registry (shortcuts cannot be KeyPath directly) -->
+        <RegistryValue Root="HKCU"
+                       Key="Software\VaultMate"
+                       Name="StartMenu"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <!-- 3. Desktop shortcut — optional (Feature = DesktopShortcut) -->
+    <DirectoryRef Id="DesktopFolder">
+      <Component Id="C_DesktopShortcut"
+                 Guid="C3D4E5F6-A7B8-9012-CDEF-123456789012">
+        <Shortcut Id="DesktopShortcut"
+                  Name="VaultMate"
+                  Target="[INSTALLDIR]Application\dist\VaultMate\VaultMate.exe"
+                  WorkingDirectory="INSTALLDIR"
+                  Icon="VaultMateIco"
+                  IconIndex="0"
+                  Description="VaultMate Password Manager" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\VaultMate"
+                       Name="DesktopShortcut"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         FEATURES
+    ═══════════════════════════════════════════════════════════════════════════ -->
+
+    <Feature Id="F_Core"
+             Title="VaultMate"
+             Description="VaultMate Password Manager (required)"
+             Level="1"
+             Absent="disallow"
+             Display="expand">
+
+      <ComponentRef Id="C_SetupHelper" />
+      <ComponentRef Id="C_StartMenuShortcut" />
+
+      <Feature Id="F_DesktopShortcut"
+               Title="Desktop Shortcut"
+               Description="Create a shortcut on the Desktop"
+               Level="1"
+               Display="expand">
+        <ComponentRef Id="C_DesktopShortcut" />
+      </Feature>
+
+    </Feature>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         ICONS
+    ═══════════════════════════════════════════════════════════════════════════ -->
+    <Icon Id="VaultMateIco" SourceFile="..\Application\vaultmate.ico" />
+    <Property Id="ARPPRODUCTICON" Value="VaultMateIco" />
+    <Property Id="ARPHELPLINK"    Value="https://github.com/webtech781/vaultmate-gui" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         CUSTOM ACTIONS
+    ═══════════════════════════════════════════════════════════════════════════
+
+    Flow:
+      CA_SetData (immediate)  → builds env-var string with INSTALLDIR + desktop flag
+      CA_RunSetup (deferred, elevated) → runs setup_build.ps1 via PowerShell
+      CA_CleanHelper (deferred) → removes _setup\ helper folder after build
+    ═══════════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Immediate: pass data to the deferred CA via a Property of the same name -->
+    <CustomAction Id="CA_SetData"
+                  Property="CA_RunSetup"
+                  Value="INSTALLDIR=[INSTALLDIR];DESKTOP=1"
+                  Execute="immediate" />
+
+    <!--
+      Deferred: run setup_build.ps1.
+      The Property value set above becomes [CustomActionData] inside the deferred CA.
+      We pass it as env var VAULTMATE_CA_DATA so the PS1 can read it.
+    -->
+    <CustomAction Id="CA_RunSetup"
+                  Directory="INSTALLDIR"
+                  ExeCommand="[SystemFolder]WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command &quot;$env:VAULTMATE_CA_DATA='[CustomActionData]'; &amp; '[INSTALLDIR]_setup\setup_build.ps1'&quot;"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="check" />
+
+    <!-- Deferred: remove the _setup helper dir (source is now in INSTALLDIR proper) -->
+    <CustomAction Id="CA_CleanHelper"
+                  Directory="INSTALLDIR"
+                  ExeCommand="[SystemFolder]cmd.exe /C rmdir /S /Q &quot;[INSTALLDIR]_setup&quot;"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore" />
+
+    <!-- Rollback: nothing to undo — GitHub download goes to a temp path first -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         INSTALL SEQUENCE
+    ═══════════════════════════════════════════════════════════════════════════ -->
+    <InstallExecuteSequence>
+      <!-- Set data just before InstallFiles so the path is resolved -->
+      <Custom Action="CA_SetData"    Before="InstallFiles">NOT Installed</Custom>
+      <!-- Run setup AFTER InstallFiles (so setup_build.ps1 is on disk) -->
+      <Custom Action="CA_RunSetup"   After="InstallFiles">NOT Installed</Custom>
+      <!-- Clean helper folder after setup completes -->
+      <Custom Action="CA_CleanHelper" After="CA_RunSetup">NOT Installed</Custom>
+    </InstallExecuteSequence>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         UI  (WiX FeatureTree = shows optional Desktop Shortcut checkbox)
+    ═══════════════════════════════════════════════════════════════════════════ -->
+    <UIRef Id="WixUI_FeatureTree" />
+    <UIRef Id="WixUI_ErrorProgressText" />
+
+    <!-- Override the default banner / background images -->
+    <!--
+    <WixVariable Id="WixUIBannerBmp"     Value="banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp"     Value="dialog.bmp" />
+    -->
+
+    <!-- Skip the "Disk Cost" dialog that sometimes appears -->
+    <WixVariable Id="WixUILicenseRtf" Value="..\LICENSE.rtf" />
+
+  </Product>
+</Wix>

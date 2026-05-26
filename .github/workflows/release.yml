@@ -72,63 +72,65 @@ jobs:
           path: VaultMate-*-linux-x86_64.tar.gz
 
   # ══════════════════════════════════════════════
-  # WINDOWS — produces VaultMate-Setup-v*-windows.exe
+  # WINDOWS — produces VaultMate-Setup-v*-windows.msi
   # ══════════════════════════════════════════════
   build-windows:
-    name: 🪟 Build Windows Installer
+    name: 🪟 Build Windows MSI
     runs-on: windows-2022
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      # ── Install WiX Toolset v3 ─────────────────────────────────────────────
+      - name: Install WiX Toolset v3
+        run: choco install wixtoolset -y --no-progress --version 3.14.1
 
-      - name: Install Python deps
-        working-directory: Application
-        run: pip install -r requirements.txt pyinstaller pillow
-
-      - name: PyInstaller build
-        working-directory: Application
-        run: pyinstaller vaultmate.spec --clean --noconfirm
-
-      - name: Bundle native host
-        working-directory: Application
+      # ── Convert plain-text LICENSE → LICENSE.rtf (WiX requires RTF) ────────
+      - name: Convert LICENSE to RTF
         shell: pwsh
         run: |
-          Copy-Item native_host.py dist\VaultMate\
-          # Windows native host wrapper batch file
-          Set-Content dist\VaultMate\native_host.bat '@echo off
-          set "DIR=%~dp0"
-          "%DIR%native_host.exe" %* 2>nul || python "%DIR%native_host.py" %*'
+          $txt = Get-Content LICENSE -Raw
+          $e = $txt -replace '\\','\\' -replace '\{','\{' -replace '\}','\}'
+          $e = $e -replace "`r`n",'\par ' -replace "`n",'\par '
+          "{{\rtf1\ansi\deff0{{\fonttbl{{\f0 Courier New;}}}}\f0\fs18 $e}" |
+            Set-Content LICENSE.rtf -Encoding ASCII
+          Write-Host "✅ LICENSE.rtf created"
 
-      - name: Install NSIS
-        run: choco install nsis -y --no-progress
-
-      - name: Build NSIS installer
+      # ── Compile + Link with WiX → .msi ────────────────────────────────────
+      - name: Build MSI
         shell: pwsh
         env:
           VAULTMATE_VERSION: ${{ env.VERSION }}
         run: |
-          $version = $env:VAULTMATE_VERSION
-          # NSIS reads $%VAULTMATE_VERSION% natively from the process environment.
-          # Run makensis from the repo root so relative paths (Application\dist\...) work.
-          & "C:\Program Files (x86)\NSIS\makensis.exe" /V2 installer\vaultmate.nsi
-          # The OutFile in vaultmate.nsi writes: VaultMate-Setup-${APP_VERSION}-windows.exe
-          $out = "VaultMate-Setup-${version}-windows.exe"
+          $ver = $env:VAULTMATE_VERSION -replace '^v',''
+          $env:VAULTMATE_VERSION = $ver
+          $bin = "C:\Program Files (x86)\WiX Toolset v3.14\bin"
+
+          # Compile .wxs → .wixobj
+          & "$bin\candle.exe" -nologo -arch x64 `
+            -ext WixUIExtension -ext WixUtilExtension `
+            installer\vaultmate.wxs -out installer\vaultmate.wixobj
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          # Link .wixobj → .msi
+          & "$bin\light.exe" -nologo `
+            -ext WixUIExtension -ext WixUtilExtension `
+            -cultures:en-us `
+            installer\vaultmate.wixobj `
+            -out "VaultMate-Setup-v${ver}-windows.msi"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $out = "VaultMate-Setup-v${ver}-windows.msi"
           if (Test-Path $out) {
-            Write-Host "✅ Installer created: $out"
+            Write-Host "✅ MSI created: $out"
           } else {
-            Write-Error "❌ Expected installer not found. Listing .exe files:"
-            Get-ChildItem *.exe
-            exit 1
+            Write-Error "❌ MSI not found"; exit 1
           }
 
       - uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: VaultMate-Setup-*.exe
+          path: VaultMate-Setup-*.msi
 
   # ══════════════════════════════════════════════
   # MACOS — produces VaultMate-v*-macOS-arm64.dmg
@@ -220,7 +222,7 @@ jobs:
             | Platform | Download | Notes |
             |---|---|---|
             | 🐧 **Linux** (x86_64) | `VaultMate-${{ env.VERSION }}-linux-x86_64.tar.gz` | Extract & run `./VaultMate` |
-            | 🪟 **Windows** (10/11) | `VaultMate-Setup-${{ env.VERSION }}-windows.exe` | Run installer → Desktop shortcut created |
+            | 🪟 **Windows** (10/11) | `VaultMate-Setup-${{ env.VERSION }}-windows.msi` | Double-click → installs Python if needed, downloads & builds VaultMate automatically |
             | 🍎 **macOS** (12+) | `VaultMate-${{ env.VERSION }}-macOS-arm64.dmg` | Open DMG → drag to Applications |
 
             ### 🦊 Firefox Extension (Fully Tested ✅)
