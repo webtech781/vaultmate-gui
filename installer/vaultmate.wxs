@@ -172,7 +172,7 @@
     -->
     <CustomAction Id="CA_RunSetup"
                   Directory="INSTALLDIR"
-                  ExeCommand="[SystemFolder]WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command &quot;$env:VAULTMATE_CA_DATA='[CustomActionData]'; &amp; '[INSTALLDIR]_setup\setup_build.ps1'&quot;"
+                  ExeCommand="[SystemFolder]WindowsPowerShell\v1.0\powershell.exe -NonInteractive -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command &quot;$env:VAULTMATE_CA_DATA='[CustomActionData]'; &amp; '[INSTALLDIR]_setup\setup_build.ps1'&quot;"
                   Execute="deferred"
                   Impersonate="no"
                   Return="check" />

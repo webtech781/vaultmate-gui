@@ -94,14 +94,17 @@ Log "Build complete."
 # ── 5. Desktop shortcut (if requested) ───────────────────────────────────────
 $exePath = Join-Path $InstallDir "Application\dist\VaultMate\VaultMate.exe"
 if ($WantDesktop -eq "1" -and (Test-Path $exePath)) {
+    # CA runs as SYSTEM — $env:USERPROFILE would point to SYSTEM's profile,
+    # not the real user's Desktop. Use the Public Desktop instead (visible to all users).
+    $desktopPath = [Environment]::GetFolderPath('CommonDesktopDirectory')
     $shell    = New-Object -ComObject WScript.Shell
-    $shortcut = $shell.CreateShortcut("$env:USERPROFILE\Desktop\VaultMate.lnk")
+    $shortcut = $shell.CreateShortcut("$desktopPath\VaultMate.lnk")
     $shortcut.TargetPath       = $exePath
     $shortcut.WorkingDirectory = Split-Path $exePath
     $shortcut.IconLocation     = $exePath
     $shortcut.Description      = "VaultMate Password Manager"
     $shortcut.Save()
-    Log "Desktop shortcut created."
+    Log "Desktop shortcut created at $desktopPath\VaultMate.lnk"
 }
 
 Log "=== VaultMate Setup Helper Finished ==="

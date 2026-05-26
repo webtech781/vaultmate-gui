@@ -97,12 +97,24 @@ jobs:
       - name: Convert LICENSE to RTF
         shell: pwsh
         run: |
-          $txt = Get-Content LICENSE -Raw
-          $e = $txt -replace '\\','\\' -replace '\{','\{' -replace '\}','\}'
-          $e = $e -replace "`r`n",'\par ' -replace "`n",'\par '
-          "{{\rtf1\ansi\deff0{{\fonttbl{{\f0 Courier New;}}}}\f0\fs18 $e}" |
-            Set-Content LICENSE.rtf -Encoding ASCII
-          Write-Host "✅ LICENSE.rtf created"
+          # Build a well-formed RTF document from the plain-text LICENSE.
+          # Use single-quoted strings so \, { and } are all literal characters.
+          $lines = Get-Content LICENSE
+          $sb    = New-Object System.Text.StringBuilder
+          [void]$sb.AppendLine('{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Courier New;}}\widowctrl\hyphauto')
+          [void]$sb.AppendLine('\pard\f0\fs18')
+          foreach ($line in $lines) {
+            # RTF-escape the three special characters
+            $esc = $line -replace '\\','\\\\' -replace '\{','\\{' -replace '\}','\\}'
+            [void]$sb.AppendLine("$esc\par")
+          }
+          [void]$sb.Append('}')
+          [System.IO.File]::WriteAllText(
+            (Join-Path $PWD 'LICENSE.rtf'),
+            $sb.ToString(),
+            [System.Text.Encoding]::ASCII
+          )
+          Write-Host "✅ LICENSE.rtf created ($($sb.Length) bytes)"
 
       # ── Compile + Link with WiX → .msi ────────────────────────────────────
       - name: Build MSI
