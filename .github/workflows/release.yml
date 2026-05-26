@@ -18,7 +18,7 @@ permissions:
 # Determine version from tag or manual input
 # ─────────────────────────────────────────────────
 env:
-  VERSION: ${{ github.ref_name || inputs.version }}
+  VERSION: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || inputs.version }}
 
 jobs:
   # ══════════════════════════════════════════════
@@ -111,7 +111,10 @@ jobs:
           VAULTMATE_VERSION: ${{ env.VERSION }}
         run: |
           $ver = $env:VAULTMATE_VERSION -replace '^v',''
-          $env:VAULTMATE_VERSION = $ver
+          # WiX requires x.x.x.x (4-part) version — pad 3-part semver with .0
+          $wixVer = if ($ver -match '^\d+\.\d+\.\d+$') { "$ver.0" } else { $ver }
+          $env:VAULTMATE_VERSION = $wixVer
+          Write-Host "Version (semver): $ver  |  Version (WiX): $wixVer"
           # Find WiX bin dynamically (handles any installed patch version)
           $wixDir = Get-ChildItem "C:\Program Files (x86)\WiX Toolset*" | Select-Object -First 1
           $bin = Join-Path $wixDir.FullName "bin"
