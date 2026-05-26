@@ -86,6 +86,8 @@
                   Icon="VaultMateIco"
                   IconIndex="0"
                   Description="VaultMate Password Manager" />
+        <!-- ICE64: every per-user directory must be in the RemoveFile table -->
+        <RemoveFolder Id="RF_AppMenuFolder" Directory="AppMenuFolder" On="uninstall" />
         <!-- KeyPath via registry (shortcuts cannot be KeyPath directly) -->
         <RegistryValue Root="HKCU"
                        Key="Software\VaultMate"
