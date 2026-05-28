@@ -55,14 +55,17 @@ cd VaultMate && ./VaultMate
 
 ---
 
-## ✅ Browser Extension Setup
+✅ Browser Extension Setup
 
 > [!IMPORTANT]
-> **Fully tested and verified on Mozilla Firefox.**
+> Fully tested, verified, and officially approved on Mozilla Firefox.
 > Firefox is the recommended browser for the best VaultMate experience.
 
-### 🦊 Firefox (Recommended — Fully Tested ✅)
+🦊 Firefox (Recommended — Official Add-on Store ✅)
+1. Install the official production version directly from the [Mozilla Add-ons Store (AMO)](https://addons.mozilla.org/addon/vaultmate-passkey-combo/).
+2. Click **"Add to Firefox"** to install it permanently. 
 
+*For Extension Developers / Manual Testing:*
 1. Download or clone this repository
 2. Open Firefox → `about:debugging#/runtime/this-firefox`
 3. Click **"Load Temporary Add-on…"**
