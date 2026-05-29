@@ -13,7 +13,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log("VaultMate: received message", request.action);
 
-  if (request.action === "intercept_passkey" || request.action === "autofill_request" || request.action === "auto_save") {
+  if (request.action === "intercept_passkey" || request.action === "autofill_request" || request.action === "auto_save" || request.action === "ping" || request.action === "auto_save_confirm") {
     chrome.runtime.sendNativeMessage('com.vaultmate.passkey', request, (response) => {
       if (chrome.runtime.lastError) {
         const errMsg = chrome.runtime.lastError.message;

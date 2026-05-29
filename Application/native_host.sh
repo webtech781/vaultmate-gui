@@ -1,9 +1,7 @@
 #!/bin/bash
-# VaultMate Native Host Wrapper
-# Uses the venv Python that has all required packages (cryptography, etc.)
-VENV_PYTHON="/home/krishna/vaultmate-gui/Application/.venv/bin/python3"
-NATIVE_HOST="/home/krishna/vaultmate-gui/Application/native_host.py"
-
+# VaultMate Native Host Wrapper - uses venv Python with all required packages
+VENV_PYTHON="/home/kali/.Vaultmate/Application/.venv/bin/python3"
+NATIVE_HOST="/home/kali/.Vaultmate/Application/native_host.py"
 if [ -f /.flatpak-info ]; then
     exec flatpak-spawn --host "$VENV_PYTHON" "$NATIVE_HOST" "$@"
 else

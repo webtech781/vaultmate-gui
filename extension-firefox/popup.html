@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>VaultMate Connect</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <span class="logo-icon">🔐</span>
+        <span class="logo-text">Vault<span class="highlight">Mate</span></span>
+      </div>
+      <div id="status-badge" class="badge status-disconnected">Disconnected</div>
+    </header>
+
+    <!-- Connection Card -->
+    <div class="card connection-card">
+      <div class="card-header">
+        <div class="status-indicator">
+          <div id="status-pulse" class="pulse-dot pulse-red"></div>
+        </div>
+        <div class="header-details">
+          <h2 id="connection-title">Offline</h2>
+          <p id="connection-desc">Extension is not connected to VaultMate.</p>
+        </div>
+      </div>
+      <div id="connection-user-wrapper" class="user-info-section hidden">
+        <span class="user-label">Active User</span>
+        <span id="active-user-name" class="user-value">kali</span>
+      </div>
+    </div>
+
+    <!-- Toggle Card -->
+    <div class="card toggle-card">
+      <div class="toggle-info">
+        <h3>Shield Interceptor</h3>
+        <p>Autofill & Passkey features</p>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="shield-toggle" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- Info / Tips Accordion -->
+    <div class="card info-card">
+      <h3 class="info-title">💡 How to use</h3>
+      <ul class="tips-list">
+        <li>
+          <span class="bullet">🚀</span>
+          <span class="text"><strong>Autofill:</strong> Focus any username or password field to show the credential picker instantly.</span>
+        </li>
+        <li>
+          <span class="bullet">🔑</span>
+          <span class="text"><strong>Passkeys:</strong> Create or login with passkeys seamlessly on compatible sites.</span>
+        </li>
+        <li>
+          <span class="bullet">🔒</span>
+          <span class="text"><strong>Lock State:</strong> Status updates in real-time when you log in/out of the VaultMate desktop app.</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <span>VaultMate Extension v1.0</span>
+      <span class="dot-separator">•</span>
+      <a href="#" id="retry-btn">Retry Connect</a>
+    </footer>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

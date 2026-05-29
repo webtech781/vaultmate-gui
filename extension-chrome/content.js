@@ -106,6 +106,9 @@
     }
 
     const vaultmateCreate = async function(options) {
+        if (document.documentElement.hasAttribute('data-vaultmate-disabled')) {
+            return originalCreate(options);
+        }
         if (!options || !options.publicKey) {
             return originalCreate(options);
         }
@@ -133,10 +136,51 @@
         }
     };
 
+    let activeConditionalRequest = null;
+
+    window.addEventListener("message", (event) => {
+        if (event.source !== window) return;
+        if (event.data && event.data.type === "VAULTMATE_RESOLVE_CONDITIONAL") {
+            if (activeConditionalRequest) {
+                try {
+                    const response = event.data.response;
+                    if (response.error) {
+                        activeConditionalRequest.reject(new Error(response.error));
+                    } else {
+                        const parsed = deserializeResponse(response.credential);
+                        parsed.authenticatorAttachment = "platform";
+                        parsed.getClientExtensionResults = function() { return {}; };
+                        if (parsed.response) {
+                            parsed.response.getAuthenticatorData = function() { return parsed.response.authenticatorData; };
+                            parsed.response.getUserHandle = function() { return parsed.response.userHandle || null; };
+                        }
+                        activeConditionalRequest.resolve(parsed);
+                    }
+                } catch (err) {
+                    activeConditionalRequest.reject(err);
+                }
+                activeConditionalRequest = null;
+            }
+        }
+    });
+
     const vaultmateGet = async function(options) {
+        if (document.documentElement.hasAttribute('data-vaultmate-disabled')) {
+            return originalGet(options);
+        }
         if (!options || !options.publicKey) {
             // Pass through conditional UI / non-passkey calls
             return originalGet(options);
+        }
+        // Custom conditional WebAuthn interception to allow choosing standard accounts or passkeys from VaultMate
+        if (options && options.mediation === 'conditional') {
+            return new Promise((resolve, reject) => {
+                activeConditionalRequest = { resolve, reject };
+                window.postMessage({
+                    type: "VAULTMATE_CONDITIONAL_SETUP",
+                    options: serializeOptions(options)
+                }, "*");
+            });
         }
         console.log("[VaultMate] Intercepting credentials.get for:", options.publicKey.rpId);
         try {

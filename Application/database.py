@@ -148,16 +148,16 @@ class Database:
 
     def update_web_password(self, pwd_id, user_id, url, website_name, username, password, notes, key):
         try:
-            f = Fernet(key)
-            encrypted_password = f.encrypt(password.encode()).decode()
+            encrypted_password = encrypt_data(password, key)
+            encrypted_note = encrypt_data(notes, key) if notes else ""
             
-            with sqlite3.connect(self.db_name) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    UPDATE web_passwords 
-                    SET web_url=?, website_name=?, username=?, encrypted_password=?, notes=?
-                    WHERE id=? AND user_id=?
-                ''', (url, website_name, username, encrypted_password, notes, pwd_id, user_id))
+            cursor = self.conn.cursor()
+            cursor.execute('''
+                UPDATE web_passwords 
+                SET web_url=?, website_name=?, username=?, encrypted_password=?, encrypted_note=?
+                WHERE id=? AND user_id=?
+            ''', (url, website_name, username, encrypted_password, encrypted_note, pwd_id, user_id))
+            self.conn.commit()
             return True
         except Exception as e:
             print(f"Error updating web password: {e}")
@@ -280,6 +280,7 @@ class Database:
                 results.append({
                     'id': row['id'],
                     'rp_id': row['rp_id'],
+                    'user_name': row['user_name'] if 'user_name' in row.keys() else None,
                     'credential_id': row['credential_id'],
                     'public_key': decrypted_pub,
                     'private_key': decrypted_priv,
