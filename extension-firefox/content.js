@@ -547,15 +547,39 @@ function showPicker(anchorEl, credentials, showAll = false) {
     header.className = 'vm-header';
     header.style.justifyContent = 'space-between';
     header.style.width = '100%';
-    header.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <span class="vm-logo">🔐</span>
-            <span class="vm-title">VaultMate — Saved Credentials</span>
-        </div>
-        <button id="vm-picker-close" style="background: none; border: none; color: rgba(255, 255, 255, 0.4); font-size: 18px; cursor: pointer; padding: 0 4px; display: flex; align-items: center; justify-content: center; transition: color 0.15s; line-height: 1; margin-left: auto;">&times;</button>
-    `;
 
-    const closeBtn = header.querySelector('#vm-picker-close');
+    const logoContainer = document.createElement('div');
+    logoContainer.style.display = 'flex';
+    logoContainer.style.alignItems = 'center';
+    logoContainer.style.gap = '10px';
+
+    const logoSpan = document.createElement('span');
+    logoSpan.className = 'vm-logo';
+    logoSpan.textContent = '🔐';
+
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'vm-title';
+    titleSpan.textContent = 'VaultMate — Saved Credentials';
+
+    logoContainer.appendChild(logoSpan);
+    logoContainer.appendChild(titleSpan);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.id = 'vm-picker-close';
+    closeBtn.style.background = 'none';
+    closeBtn.style.border = 'none';
+    closeBtn.style.color = 'rgba(255, 255, 255, 0.4)';
+    closeBtn.style.fontSize = '18px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.padding = '0 4px';
+    closeBtn.style.display = 'flex';
+    closeBtn.style.alignItems = 'center';
+    closeBtn.style.justifyContent = 'center';
+    closeBtn.style.transition = 'color 0.15s';
+    closeBtn.style.lineHeight = '1';
+    closeBtn.style.marginLeft = 'auto';
+    closeBtn.textContent = '×';
+
     closeBtn.addEventListener('mousedown', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -564,6 +588,8 @@ function showPicker(anchorEl, credentials, showAll = false) {
     closeBtn.addEventListener('mouseenter', () => { closeBtn.style.color = '#ffffff'; });
     closeBtn.addEventListener('mouseleave', () => { closeBtn.style.color = 'rgba(255, 255, 255, 0.4)'; });
 
+    header.appendChild(logoContainer);
+    header.appendChild(closeBtn);
     picker.appendChild(header);
 
     // Items
@@ -572,14 +598,37 @@ function showPicker(anchorEl, credentials, showAll = false) {
         item.className = 'vm-item';
 
         if (cred.type === 'passkey') {
-            item.innerHTML = `
-                <div class="vm-avatar" style="background: linear-gradient(135deg, #a855f7, #ec4899); font-size: 14px;">🔑</div>
-                <div class="vm-info">
-                    <div class="vm-name" style="font-family: 'Outfit', sans-serif;">${escapeHtml(cred.username)}</div>
-                    <div class="vm-user">Passkey Account</div>
-                </div>
-                <div class="vm-fill-badge" style="color: #ec4899; background: rgba(236, 72, 153, 0.15); border: 1px solid rgba(236, 72, 153, 0.25);">Use Passkey</div>
-            `;
+            const avatar = document.createElement('div');
+            avatar.className = 'vm-avatar';
+            avatar.style.background = 'linear-gradient(135deg, #a855f7, #ec4899)';
+            avatar.style.fontSize = '14px';
+            avatar.textContent = '🔑';
+
+            const info = document.createElement('div');
+            info.className = 'vm-info';
+
+            const name = document.createElement('div');
+            name.className = 'vm-name';
+            name.style.fontFamily = "'Outfit', sans-serif";
+            name.textContent = cred.username;
+
+            const user = document.createElement('div');
+            user.className = 'vm-user';
+            user.textContent = 'Passkey Account';
+
+            info.appendChild(name);
+            info.appendChild(user);
+
+            const badge = document.createElement('div');
+            badge.className = 'vm-fill-badge';
+            badge.style.color = '#ec4899';
+            badge.style.background = 'rgba(236, 72, 153, 0.15)';
+            badge.style.border = '1px solid rgba(236, 72, 153, 0.25)';
+            badge.textContent = 'Use Passkey';
+
+            item.appendChild(avatar);
+            item.appendChild(info);
+            item.appendChild(badge);
             
             item.addEventListener('mousedown', (e) => {
                 e.preventDefault(); // prevent blur
@@ -615,14 +664,32 @@ function showPicker(anchorEl, credentials, showAll = false) {
             });
         } else {
             const initial = (cred.username || cred.name || '?')[0].toUpperCase();
-            item.innerHTML = `
-                <div class="vm-avatar">${initial}</div>
-                <div class="vm-info">
-                    <div class="vm-name">${escapeHtml(cred.name || cred.username)}</div>
-                    <div class="vm-user">${escapeHtml(cred.username)}</div>
-                </div>
-                <div class="vm-fill-badge">Fill</div>
-            `;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'vm-avatar';
+            avatar.textContent = initial;
+
+            const info = document.createElement('div');
+            info.className = 'vm-info';
+
+            const name = document.createElement('div');
+            name.className = 'vm-name';
+            name.textContent = cred.name || cred.username;
+
+            const user = document.createElement('div');
+            user.className = 'vm-user';
+            user.textContent = cred.username;
+
+            info.appendChild(name);
+            info.appendChild(user);
+
+            const badge = document.createElement('div');
+            badge.className = 'vm-fill-badge';
+            badge.textContent = 'Fill';
+
+            item.appendChild(avatar);
+            item.appendChild(info);
+            item.appendChild(badge);
 
             item.addEventListener('mousedown', (e) => {
                 e.preventDefault(); // prevent blur
@@ -657,9 +724,6 @@ function positionPicker(anchorEl, picker) {
     picker.style.left = `${left}px`;
 }
 
-function escapeHtml(str) {
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
 
 function fillCredential(anchorEl, cred) {
     const { passInputs, userInputs } = findLoginInputs(anchorEl);
@@ -943,29 +1007,79 @@ function showSavePrompt(pending) {
 
         const container = document.createElement('div');
         container.id = 'vaultmate-save-prompt';
-        container.innerHTML = `
-            <div class="vm-prompt-header">
-                <span class="vm-prompt-logo">🔐</span>
-                <span class="vm-prompt-title">VaultMate</span>
-            </div>
-            <div class="vm-prompt-body">
-                Would you like to store this username & password into VaultMate?
-            </div>
-            <div class="vm-prompt-details">
-                <div class="vm-prompt-detail-item">
-                    <span class="vm-prompt-detail-label">Service</span>
-                    <span class="vm-prompt-detail-val">${pending.name}</span>
-                </div>
-                <div class="vm-prompt-detail-item">
-                    <span class="vm-prompt-detail-label">Username</span>
-                    <span class="vm-prompt-detail-val">${pending.username}</span>
-                </div>
-            </div>
-            <div class="vm-prompt-actions">
-                <button class="vm-prompt-btn vm-prompt-btn-cancel" id="vm-prompt-btn-no">No, thanks</button>
-                <button class="vm-prompt-btn vm-prompt-btn-save" id="vm-prompt-btn-yes">Save</button>
-            </div>
-        `;
+
+        // Header
+        const prHeader = document.createElement('div');
+        prHeader.className = 'vm-prompt-header';
+
+        const prLogo = document.createElement('span');
+        prLogo.className = 'vm-prompt-logo';
+        prLogo.textContent = '🔐';
+
+        const prTitle = document.createElement('span');
+        prTitle.className = 'vm-prompt-title';
+        prTitle.textContent = 'VaultMate';
+
+        prHeader.appendChild(prLogo);
+        prHeader.appendChild(prTitle);
+
+        // Body
+        const prBody = document.createElement('div');
+        prBody.className = 'vm-prompt-body';
+        prBody.textContent = 'Would you like to store this username & password into VaultMate?';
+
+        // Details
+        const prDetails = document.createElement('div');
+        prDetails.className = 'vm-prompt-details';
+
+        // Service row
+        const svcRow = document.createElement('div');
+        svcRow.className = 'vm-prompt-detail-item';
+        const svcLbl = document.createElement('span');
+        svcLbl.className = 'vm-prompt-detail-label';
+        svcLbl.textContent = 'Service';
+        const svcVal = document.createElement('span');
+        svcVal.className = 'vm-prompt-detail-val';
+        svcVal.textContent = pending.name;
+        svcRow.appendChild(svcLbl);
+        svcRow.appendChild(svcVal);
+
+        // Username row
+        const usrRow = document.createElement('div');
+        usrRow.className = 'vm-prompt-detail-item';
+        const usrLbl = document.createElement('span');
+        usrLbl.className = 'vm-prompt-detail-label';
+        usrLbl.textContent = 'Username';
+        const usrVal = document.createElement('span');
+        usrVal.className = 'vm-prompt-detail-val';
+        usrVal.textContent = pending.username;
+        usrRow.appendChild(usrLbl);
+        usrRow.appendChild(usrVal);
+
+        prDetails.appendChild(svcRow);
+        prDetails.appendChild(usrRow);
+
+        // Actions
+        const prActions = document.createElement('div');
+        prActions.className = 'vm-prompt-actions';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'vm-prompt-btn vm-prompt-btn-cancel';
+        cancelBtn.id = 'vm-prompt-btn-no';
+        cancelBtn.textContent = 'No, thanks';
+
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'vm-prompt-btn vm-prompt-btn-save';
+        saveBtn.id = 'vm-prompt-btn-yes';
+        saveBtn.textContent = 'Save';
+
+        prActions.appendChild(cancelBtn);
+        prActions.appendChild(saveBtn);
+
+        container.appendChild(prHeader);
+        container.appendChild(prBody);
+        container.appendChild(prDetails);
+        container.appendChild(prActions);
 
         document.body.appendChild(container);
 
